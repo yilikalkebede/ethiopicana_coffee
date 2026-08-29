@@ -2,16 +2,6 @@
 const nextConfig = {
   poweredByHeader: false,
   compress: true,
-  // Constrains Next's build-time worker parallelism. On CPU-constrained CI
-  // runners (GitHub's hosted runners are 2 cores), Next's default worker
-  // pool can race writing shared webpack chunks during static generation,
-  // surfacing as "Cannot find module './XXXX.js'" — a well-documented
-  // Next.js build bug, not an app issue. Single-threaded build is slower
-  // but deterministic; this app's route count doesn't make that costly.
-  experimental: {
-    cpus: 1,
-    workerThreads: false,
-  },
   images: {
     remotePatterns: [
       // Add the domain(s) your product photography is served from, e.g.
