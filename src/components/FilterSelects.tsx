@@ -11,11 +11,11 @@ const SORTS = [
 
 export function FilterSelects({ regions, roasts }: { regions: string[]; roasts: string[] }) {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/shop";
   const searchParams = useSearchParams();
 
   function updateParam(key: string, value: string) {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
     if (value) {
       params.set(key, value);
     } else {
@@ -30,7 +30,7 @@ export function FilterSelects({ regions, roasts }: { regions: string[]; roasts: 
     <div className="flex flex-wrap items-center gap-3">
       <select
         aria-label="Filter by region"
-        value={searchParams.get("region") ?? ""}
+        value={searchParams?.get("region") ?? ""}
         onChange={(e) => updateParam("region", e.target.value)}
         className="border border-line bg-paper px-3 py-2 font-body text-sm text-ink"
       >
@@ -44,7 +44,7 @@ export function FilterSelects({ regions, roasts }: { regions: string[]; roasts: 
 
       <select
         aria-label="Filter by roast"
-        value={searchParams.get("roast") ?? ""}
+        value={searchParams?.get("roast") ?? ""}
         onChange={(e) => updateParam("roast", e.target.value)}
         className="border border-line bg-paper px-3 py-2 font-body text-sm text-ink"
       >
@@ -58,7 +58,7 @@ export function FilterSelects({ regions, roasts }: { regions: string[]; roasts: 
 
       <select
         aria-label="Sort"
-        value={searchParams.get("sort") ?? "featured"}
+        value={searchParams?.get("sort") ?? "featured"}
         onChange={(e) => updateParam("sort", e.target.value)}
         className="ml-auto border border-line bg-paper px-3 py-2 font-body text-sm text-ink"
       >

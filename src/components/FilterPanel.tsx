@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { FilterSelects } from "@/components/FilterSelects";
 
@@ -44,7 +45,12 @@ export function FilterPanel({
         ))}
       </div>
 
-      <FilterSelects regions={regions} roasts={roasts} />
+      {/* useSearchParams() inside FilterSelects opts it into client-side
+          rendering unless wrapped in Suspense — required by Next.js for
+          static generation to succeed. */}
+      <Suspense fallback={null}>
+        <FilterSelects regions={regions} roasts={roasts} />
+      </Suspense>
     </div>
   );
 }

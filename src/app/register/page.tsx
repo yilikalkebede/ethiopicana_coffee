@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getSafeNextPath } from "@/lib/safeRedirect";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [firstName, setFirstName] = useState("");
@@ -38,7 +38,7 @@ export default function RegisterPage() {
       return;
     }
 
-    router.push(getSafeNextPath(searchParams.get("next")));
+    router.push(getSafeNextPath(searchParams?.get("next") ?? null));
     router.refresh();
   }
 
@@ -125,12 +125,23 @@ export default function RegisterPage() {
       <p className="mt-6 font-body text-sm text-ink-soft">
         Already have an account?{" "}
         <Link
-          href={`/login${searchParams.get("next") ? `?next=${encodeURIComponent(searchParams.get("next") ?? "")}` : ""}`}
+          href={`/login${searchParams?.get("next") ? `?next=${encodeURIComponent(searchParams?.get("next") ?? "")}` : ""}`}
           className="text-belt-700 underline underline-offset-2"
         >
           Sign in
         </Link>
       </p>
     </section>
+  );
+}
+
+// useSearchParams() opts the page into client-side rendering unless wrapped
+// in Suspense — required by Next.js for static generation to succeed
+// (https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout).
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   );
 }
