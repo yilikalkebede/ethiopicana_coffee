@@ -1,0 +1,853 @@
+// Latitude Coffee Co. — core database schema
+// Phase 1 delivers the full relational model so later phases (checkout,
+// subscriptions, inventory, shipping, rewards) build on real, normalized
+// tables rather than being retrofitted in.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// IDENTITY, ROLES, PERMISSIONS
+// ---------------------------------------------------------------------------
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum RoleName {
+  ADMIN
+  MANAGER
+  CUSTOMER
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String?
+  role          RoleName   @default(CUSTOMER)
+  status        UserStatus @default(ACTIVE)
+  emailVerified DateTime?
+  stripeCustomerId String? @unique
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastLoginAt DateTime?
+
+  addresses          Address[]
+  cart               Cart?
+  orders             Order[]
+  subscriptions      Subscription[]
+  reviews            Review[]
+  rewardTransactions RewardTransaction[]
+  rewardBalance      RewardBalance?
+  giftsPurchased     GiftSubscription[]      @relation("GiftPurchaser")
+  auditLogs          AuditLog[]
+  inventoryTx        InventoryTransaction[]
+  sessions           Session[]
+  emailVerifications EmailVerificationToken[]
+  journalPosts       JournalPost[]
+  passwordResets     PasswordResetToken[]
+  notificationPrefs  NotificationPreference?
+
+  @@index([email])
+  @@index([stripeCustomerId])
+}
+
+// Session-based auth (secure httpOnly cookie holding the session token).
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  userAgent String?
+  ipAddress String?
+
+  @@index([userId])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+// Permissions are modeled explicitly (rather than hard-coded per role) so
+// new roles/permissions can be introduced later without a schema change.
+model Permission {
+  id          String @id @default(cuid())
+  key         String @unique // e.g. "inventory.adjust", "users.role.change"
+  description String
+
+  roles RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  role         RoleName
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([role, permissionId])
+}
+
+model Address {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName         String
+  lastName          String
+  company           String?
+  address1          String
+  address2          String?
+  city              String
+  state             String
+  postalCode        String
+  country           String
+  phone             String?
+  isDefaultShipping Boolean  @default(false)
+  isDefaultBilling  Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  subscriptions Subscription[]
+
+  @@index([userId])
+}
+
+model NotificationPreference {
+  id                     String  @id @default(cuid())
+  userId                 String  @unique
+  user                   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketingEmail         Boolean @default(true)
+  subscriptionReminders  Boolean @default(true)
+  shippingNotifications  Boolean @default(true)
+  promotions             Boolean @default(true)
+  rewardsUpdates         Boolean @default(true)
+  productAnnouncements   Boolean @default(true)
+}
+
+// ---------------------------------------------------------------------------
+// CATALOG
+// ---------------------------------------------------------------------------
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  parentId    String?
+  parent      Category? @relation("CategoryTree", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryTree")
+  products    Product[]
+}
+
+model Product {
+  id                  String   @id @default(cuid())
+  name                String
+  slug                String   @unique
+  description         String
+  shortDescription    String?
+  sku                 String   @unique
+  categoryId          String?
+  category            Category? @relation(fields: [categoryId], references: [id])
+  price               Decimal  @db.Decimal(10, 2)
+  compareAtPrice      Decimal? @db.Decimal(10, 2)
+  cost                Decimal? @db.Decimal(10, 2)
+  active              Boolean  @default(true)
+  featured            Boolean  @default(false)
+  subscriptionEligible Boolean @default(true)
+
+  // Coffee-specific attributes (kept on the product rather than a generic
+  // EAV table since every item in the catalog is coffee or a coffee good).
+  origin             String?
+  farmOrProducer     String?
+  region             String?
+  elevationMeters    Int?
+  processingMethod   String?
+  roastLevel         String? // light / medium / medium-dark / dark
+  flavorNotes        String[]
+  brewMethods        String[]
+  latitude           Float?
+  longitude          Float?
+
+  seoTitle       String?
+  seoDescription String?
+  ogImageUrl     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  variants         ProductVariant[]
+  images           ProductImage[]
+  reviews          Review[]
+  orderItems       OrderItem[]
+  monthlyFeature   MonthlyCoffee[]
+
+  @@index([slug])
+  @@index([sku])
+  @@index([categoryId])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String
+  position  Int     @default(0)
+}
+
+// Variants capture bag size / grind / roast / format combinations.
+model ProductVariant {
+  id                 String  @id @default(cuid())
+  productId          String
+  product            Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku                String  @unique
+  name               String // e.g. "12oz / Whole Bean"
+  bagSize            String?
+  grind              String?
+  price              Decimal @db.Decimal(10, 2)
+  cost               Decimal? @db.Decimal(10, 2)
+  weightGrams        Int?
+  inventoryQuantity  Int     @default(0)
+  reservedQuantity   Int     @default(0)
+  lowStockThreshold  Int     @default(10)
+  active             Boolean @default(true)
+
+  orderItems          OrderItem[]
+  subscriptionItems   SubscriptionItem[]
+  inventoryTx         InventoryTransaction[]
+  purchaseOrderItems  PurchaseOrderItem[]
+  cartItems           CartItem[]
+
+  @@index([sku])
+  @@index([productId])
+}
+
+// "Coffee of the Month" — admin-configured, homepage reads the active one.
+model MonthlyCoffee {
+  id               String   @id @default(cuid())
+  productId        String
+  product          Product  @relation(fields: [productId], references: [id])
+  story            String
+  availableFrom    DateTime
+  availableUntil   DateTime?
+  featured         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  @@index([productId])
+}
+
+// ---------------------------------------------------------------------------
+// INVENTORY
+// ---------------------------------------------------------------------------
+
+enum InventoryTransactionType {
+  PURCHASE
+  SALE
+  RETURN
+  ADJUSTMENT
+  DAMAGE
+  LOSS
+  TRANSFER
+  RESTOCK
+  RESERVATION
+  RELEASE
+}
+
+// Every inventory movement — reservation, sale, adjustment, restock — is
+// recorded here. Nothing modifies ProductVariant.inventoryQuantity directly
+// outside of a transaction that writes one of these rows.
+model InventoryTransaction {
+  id                String                    @id @default(cuid())
+  productVariantId  String
+  productVariant    ProductVariant            @relation(fields: [productVariantId], references: [id])
+  type              InventoryTransactionType
+  quantity          Int
+  previousQuantity  Int
+  newQuantity       Int
+  reason            String?
+  referenceId       String? // order id, PO id, etc.
+  userId            String?
+  user              User?                     @relation(fields: [userId], references: [id])
+  createdAt         DateTime                  @default(now())
+
+  @@index([productVariantId])
+  @@index([referenceId])
+}
+
+model Supplier {
+  id            String @id @default(cuid())
+  name          String
+  contactEmail  String?
+  contactPhone  String?
+  address       String?
+
+  purchaseOrders PurchaseOrder[]
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id         String              @id @default(cuid())
+  supplierId String
+  supplier   Supplier            @relation(fields: [supplierId], references: [id])
+  status     PurchaseOrderStatus @default(DRAFT)
+  createdAt  DateTime            @default(now())
+  submittedAt DateTime?
+  receivedAt  DateTime?
+
+  items PurchaseOrderItem[]
+}
+
+model PurchaseOrderItem {
+  id                String         @id @default(cuid())
+  purchaseOrderId   String
+  purchaseOrder     PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productVariantId  String
+  productVariant    ProductVariant @relation(fields: [productVariantId], references: [id])
+  quantityExpected  Int
+  quantityReceived  Int            @default(0)
+  unitCost          Decimal        @db.Decimal(10, 2)
+}
+
+// ---------------------------------------------------------------------------
+// CART
+//
+// One cart per logged-in user (userId) or per anonymous visitor (guestToken,
+// issued via an httpOnly cookie) — never both on the same row. Address
+// selection is stored as a snapshot rather than a foreign key to Address,
+// since guests have no User row to hang an Address off of; this mirrors the
+// snapshot pattern already used on Order.
+// ---------------------------------------------------------------------------
+
+model Cart {
+  id         String  @id @default(cuid())
+  userId     String? @unique
+  user       User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guestToken String? @unique
+
+  shippingAddressSnapshot Json?
+  billingAddressSnapshot  Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items CartItem[]
+
+  @@index([guestToken])
+}
+
+model CartItem {
+  id               String         @id @default(cuid())
+  cartId           String
+  cart             Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productVariantId String
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
+  quantity         Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productVariantId])
+  @@index([cartId])
+}
+
+// ---------------------------------------------------------------------------
+// ORDERS
+// ---------------------------------------------------------------------------
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  PACKED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum FulfillmentStatus {
+  UNFULFILLED
+  RESERVED
+  PACKED
+  SHIPPED
+  DELIVERED
+  REQUIRES_ATTENTION
+}
+
+model Order {
+  id                     String            @id @default(cuid())
+  userId                 String?
+  user                   User?             @relation(fields: [userId], references: [id])
+  // Persisted so guest orders (no User row) still have a contactable email
+  // for order management/search — logged-in orders always have user.email
+  // too, but this is set from the checkout form either way rather than
+  // conditionally, so admin order search has one consistent field to query.
+  // Optional only because orders created before this field existed have no
+  // value to backfill; every order created going forward always sets it.
+  email                  String?
+  orderNumber            String            @unique
+  status                 OrderStatus       @default(PENDING)
+  paymentStatus          PaymentStatus     @default(PENDING)
+  fulfillmentStatus      FulfillmentStatus @default(UNFULFILLED)
+
+  subtotal   Decimal @db.Decimal(10, 2)
+  discount   Decimal @db.Decimal(10, 2) @default(0)
+  shipping   Decimal @db.Decimal(10, 2) @default(0)
+  tax        Decimal @db.Decimal(10, 2) @default(0)
+  total      Decimal @db.Decimal(10, 2)
+  currency   String  @default("usd")
+
+  // Snapshots so historical orders remain accurate if the user edits addresses later.
+  shippingAddressSnapshot Json
+  billingAddressSnapshot  Json?
+
+  // Real EasyPost carrier/service the shopper was quoted at checkout (or,
+  // for a free-shipping order, the cheapest real option — Phase 6). Read
+  // back at ship-time as a preference, never as a trusted price on its own;
+  // null when EasyPost was unavailable at checkout, in which case ship-time
+  // just re-quotes and picks cheapest with no preference to match.
+  selectedCarrier String?
+  selectedService String?
+
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  couponId String?
+  coupon   Coupon? @relation(fields: [couponId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items     OrderItem[]
+  payments  Payment[]
+  shipments Shipment[]
+
+  @@index([orderNumber])
+  @@index([userId])
+  @@index([subscriptionId])
+}
+
+// Historical accuracy: product name/price are copied at time of purchase so
+// a later rename/reprice never changes what a past order displays.
+model OrderItem {
+  id               String          @id @default(cuid())
+  orderId          String
+  order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product         @relation(fields: [productId], references: [id])
+  productVariantId String?
+  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id])
+  productNameSnapshot String
+  variantNameSnapshot String?
+  quantity         Int
+  unitPrice        Decimal         @db.Decimal(10, 2)
+  discount         Decimal         @db.Decimal(10, 2) @default(0)
+  total            Decimal         @db.Decimal(10, 2)
+
+  @@index([orderId])
+}
+
+model Payment {
+  id                    String   @id @default(cuid())
+  orderId               String
+  order                 Order    @relation(fields: [orderId], references: [id])
+  stripePaymentIntentId String?  @unique
+  stripeChargeId        String?
+  amount                Decimal  @db.Decimal(10, 2)
+  currency              String   @default("usd")
+  status                PaymentStatus
+  failureReason         String?
+  createdAt             DateTime @default(now())
+
+  @@index([orderId])
+}
+
+// ---------------------------------------------------------------------------
+// SUBSCRIPTIONS
+// ---------------------------------------------------------------------------
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  PAST_DUE
+  INCOMPLETE
+}
+
+enum SubscriptionFrequency {
+  EVERY_2_WEEKS
+  EVERY_4_WEEKS
+  EVERY_6_WEEKS
+  EVERY_8_WEEKS
+}
+
+model Subscription {
+  id                    String                 @id @default(cuid())
+  userId                String
+  user                  User                   @relation(fields: [userId], references: [id])
+  stripeSubscriptionId  String?                @unique
+  status                SubscriptionStatus     @default(ACTIVE)
+  frequency             SubscriptionFrequency
+  nextBillingDate       DateTime?
+  nextShipmentDate      DateTime?
+
+  quantity          Int     @default(1)
+  bagSize           String
+  roastPreference   String
+  grindPreference   String
+  brewMethod        String
+  flavorPreference  String[]
+
+  shippingAddressId String
+  shippingAddress   Address @relation(fields: [shippingAddressId], references: [id])
+
+  // Stripe manages the actual payment method; we only keep a display-safe reference.
+  paymentMethodLast4  String?
+  paymentMethodBrand  String?
+
+  pausedAt   DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items  SubscriptionItem[]
+  events SubscriptionEvent[]
+  orders Order[]
+  giftSubscription GiftSubscription?
+
+  @@index([userId])
+  @@index([status])
+}
+
+// Allows a subscription to eventually carry more than one product/variant.
+model SubscriptionItem {
+  id               String         @id @default(cuid())
+  subscriptionId   String
+  subscription     Subscription   @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  productVariantId String
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
+  quantity         Int            @default(1)
+
+  @@index([subscriptionId])
+}
+
+enum SubscriptionEventType {
+  CREATED
+  UPDATED
+  PAUSED
+  RESUMED
+  SKIPPED
+  CANCELLED
+  RENEWED
+  PAYMENT_FAILED
+  PAYMENT_SUCCEEDED
+  SHIPMENT_CREATED
+  SHIPMENT_FULFILLED
+}
+
+model SubscriptionEvent {
+  id             String                 @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription           @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  type           SubscriptionEventType
+  metadata       Json?
+  createdAt      DateTime               @default(now())
+
+  @@index([subscriptionId])
+}
+
+// ---------------------------------------------------------------------------
+// SHIPPING / FULFILLMENT
+// ---------------------------------------------------------------------------
+
+enum ShipmentStatus {
+  LABEL_CREATED
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
+  FAILED
+}
+
+model Shipment {
+  id                String         @id @default(cuid())
+  orderId           String
+  order             Order          @relation(fields: [orderId], references: [id])
+  trackingNumber    String?
+  carrier           String?
+  shippingProvider  String? // shippo | easypost | shipstation | manual
+  shippingLabelUrl  String?
+  status            ShipmentStatus @default(LABEL_CREATED)
+  shippedAt         DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime       @default(now())
+
+  @@index([orderId])
+  @@index([trackingNumber])
+}
+
+// ---------------------------------------------------------------------------
+// COUPONS / PROMOTIONS
+// ---------------------------------------------------------------------------
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+  FREE_SHIPPING
+}
+
+model Coupon {
+  id                     String     @id @default(cuid())
+  code                   String     @unique
+  type                   CouponType
+  value                  Decimal    @db.Decimal(10, 2) // percentage or fixed amount
+  firstOrderOnly         Boolean    @default(false)
+  subscriptionOnly       Boolean    @default(false)
+  minimumPurchase        Decimal?   @db.Decimal(10, 2)
+  usageLimit             Int?
+  perUserLimit           Int?
+  timesUsed              Int        @default(0)
+  startsAt               DateTime?
+  expiresAt              DateTime?
+  active                 Boolean    @default(true)
+
+  orders Order[]
+
+  @@index([code])
+}
+
+// ---------------------------------------------------------------------------
+// REWARDS / LOYALTY
+// ---------------------------------------------------------------------------
+
+model RewardBalance {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+  points Int    @default(0)
+}
+
+enum RewardTransactionType {
+  EARNED
+  REDEEMED
+  EXPIRED
+  ADJUSTED
+}
+
+model RewardTransaction {
+  id        String                 @id @default(cuid())
+  userId    String
+  user      User                   @relation(fields: [userId], references: [id])
+  type      RewardTransactionType
+  amount    Int
+  reason    String
+  expiresAt DateTime?
+  createdAt DateTime               @default(now())
+
+  @@index([userId])
+}
+
+// Admin-configurable reward tiers, e.g. "100 points -> $5 credit".
+model RewardTier {
+  id          String  @id @default(cuid())
+  name        String
+  pointsCost  Int
+  rewardType  String // credit | free_shipping | percentage_discount | free_product
+  rewardValue String // e.g. "5.00", "15", productId
+  active      Boolean @default(true)
+}
+
+// ---------------------------------------------------------------------------
+// GIFTS
+// ---------------------------------------------------------------------------
+
+enum GiftSubscriptionStatus {
+  PENDING
+  SENT
+  CLAIMED
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+model GiftSubscription {
+  id             String                  @id @default(cuid())
+  purchaserId    String
+  purchaser      User                    @relation("GiftPurchaser", fields: [purchaserId], references: [id])
+  recipientEmail String
+  recipientName  String?
+  giftMessage    String?
+  deliveryDate   DateTime
+  durationMonths Int
+  // What was actually paid for — needed at claim time to know what plan
+  // the recipient is entitled to (nothing else survives the gap between
+  // purchase and claim, which can be weeks).
+  ounces         Int                     @default(12)
+  renewable      Boolean                 @default(false)
+  status         GiftSubscriptionStatus  @default(PENDING)
+  claimToken     String                  @unique
+  claimedAt      DateTime?
+  createdAt      DateTime                @default(now())
+
+  // What was actually paid (Phase 8) — the model had no way to track this
+  // before. stripePaymentIntentId gives the one-time gift purchase the same
+  // webhook-idempotency guarantee every other payment path already has.
+  amount                Decimal       @db.Decimal(10, 2) @default(0)
+  stripePaymentIntentId String?       @unique
+  // The real recipient Subscription created on claim (a live Stripe
+  // subscription with a 100%-off discount for the gifted duration — see
+  // src/app/api/gifts/claim/[token]/route.ts).
+  subscriptionId         String?       @unique
+  subscription           Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@index([claimToken])
+  @@index([recipientEmail])
+}
+
+// ---------------------------------------------------------------------------
+// REVIEWS
+// ---------------------------------------------------------------------------
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  HIDDEN
+}
+
+model Review {
+  id               String       @id @default(cuid())
+  userId           String
+  user             User         @relation(fields: [userId], references: [id])
+  productId        String
+  product          Product      @relation(fields: [productId], references: [id])
+  rating           Int
+  title            String?
+  body             String
+  verifiedPurchase Boolean      @default(false)
+  status           ReviewStatus @default(PENDING)
+  helpfulVotes     Int          @default(0)
+  createdAt        DateTime     @default(now())
+
+  // One review per customer per product — the natural key for "already
+  // reviewed" checks and basic spam prevention.
+  @@unique([userId, productId])
+  @@index([productId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// AUDIT LOG
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  oldValue  Json?
+  newValue  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+}
+
+// ---------------------------------------------------------------------------
+// STORE SETTINGS
+//
+// Single-row table (fixed id) — admin-editable values that used to be
+// hardcoded constants in src/lib/config.ts. Defaults match what was already
+// live so the migration doesn't change real behavior on its own.
+// ---------------------------------------------------------------------------
+
+model Settings {
+  id                         String   @id @default("singleton")
+  freeShippingThreshold      Decimal  @db.Decimal(10, 2) @default(35)
+  flatShippingRate           Decimal  @db.Decimal(10, 2) @default(6)
+  checkoutReservationMinutes Int      @default(30)
+
+  // "Ship from" address — required for any real EasyPost rate/label call
+  // (Phase 6). Nullable/blank until an admin fills them in via Settings;
+  // src/lib/shipping.ts refuses to call out to EasyPost without a complete
+  // origin address rather than silently using a fake one.
+  shipFromName       String?
+  shipFromCompany    String?
+  shipFromAddress1   String?
+  shipFromAddress2   String?
+  shipFromCity       String?
+  shipFromState      String?
+  shipFromPostalCode String?
+  shipFromCountry    String?
+  shipFromPhone      String?
+
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// JOURNAL / CONTENT
+// ---------------------------------------------------------------------------
+
+model JournalPost {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  excerpt     String?
+  body        String
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+  authorId    String?
+  author      User?     @relation(fields: [authorId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([published, publishedAt])
+}

@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-paper text-ink font-body antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+  }
+
+  /* Visible focus states everywhere — never suppress the outline. */
+  :focus-visible {
+    outline: 2px solid theme("colors.belt.500");
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* The signature element: a stamped coordinate tag, used on hero art,
+     product cards, and the monthly-coffee feature to mark origin. */
+  .specimen-tag {
+    @apply inline-flex items-center gap-2 border border-belt-500/40 px-3 py-1
+      font-mono text-[11px] uppercase tracking-tag text-belt-700;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center bg-belt-500 px-6 py-3
+      font-body text-sm font-medium text-paper transition-colors
+      hover:bg-belt-700 focus-visible:outline-belt-700;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center border border-ink px-6 py-3
+      font-body text-sm font-medium text-ink transition-colors
+      hover:bg-ink hover:text-paper;
+  }
+
+  .tag-pill {
+    @apply inline-flex items-center border border-line px-2.5 py-1
+      font-mono text-[10px] uppercase tracking-tag text-ink-soft;
+  }
+}
