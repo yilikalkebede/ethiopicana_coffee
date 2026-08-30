@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { NewsletterForm } from "@/components/NewsletterForm";
+import { getPrimaryImage } from "@/lib/productImage";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -12,7 +14,7 @@ async function getCurrentMonthlyCoffee() {
     return await prisma.monthlyCoffee.findFirst({
       where: { featured: true, availableFrom: { lte: new Date() } },
       orderBy: { availableFrom: "desc" },
-      include: { product: true },
+      include: { product: { include: { images: { orderBy: { position: "asc" }, take: 1 } } } },
     });
   } catch {
     // Database not provisioned yet (e.g. first local run before `db:migrate`).
@@ -22,6 +24,7 @@ async function getCurrentMonthlyCoffee() {
 
 export default async function HomePage() {
   const monthly = await getCurrentMonthlyCoffee();
+  const monthlyImage = monthly ? getPrimaryImage(monthly.product.images) : null;
 
   const heroTag =
     monthly?.product.latitude != null && monthly?.product.longitude != null
@@ -98,6 +101,11 @@ export default async function HomePage() {
           <p className="font-mono text-[11px] uppercase tracking-tag text-belt-100">This month&apos;s specimen</p>
           {monthly ? (
             <>
+              {monthlyImage && (
+                <div className="relative mt-6 aspect-[21/9] w-full overflow-hidden border border-belt-500/40">
+                  <Image src={monthlyImage.url} alt={monthlyImage.altText} fill sizes="100vw" className="object-cover" unoptimized />
+                </div>
+              )}
               <h2 className="mt-3 text-4xl">{monthly.product.name}</h2>
               <p className="mt-4 max-w-2xl font-body text-belt-100">{monthly.story}</p>
               <Link href={`/shop/${monthly.product.slug}`} className="btn-primary mt-8 !bg-paper !text-ink hover:!bg-belt-100">

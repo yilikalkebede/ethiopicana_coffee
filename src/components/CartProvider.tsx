@@ -18,6 +18,7 @@ export type CartItemDTO = {
     product: {
       name: string;
       slug: string;
+      images: { url: string; altText: string }[];
     };
   };
 };

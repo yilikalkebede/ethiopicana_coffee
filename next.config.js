@@ -4,8 +4,9 @@ const nextConfig = {
   compress: true,
   images: {
     remotePatterns: [
-      // Add the domain(s) your product photography is served from, e.g.
-      // an S3 bucket or a CMS's media host.
+      // Vercel Blob — every store's public URL is a random subdomain of
+      // this shared host, e.g. https://<storeId>.public.blob.vercel-storage.com/...
+      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
     ],
   },
   async headers() {

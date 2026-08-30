@@ -1,10 +1,12 @@
 import Link from "next/link";
+import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
 import { DataTable } from "@/components/DataTable";
 import { ProductActiveToggle } from "@/components/ProductActiveToggle";
 import { StockBadge } from "@/components/StockBadge";
 import { getProductStockStatus } from "@/lib/stock";
+import { getPrimaryImage } from "@/lib/productImage";
 
 export async function ProductListView({ basePath, q }: { basePath: "/admin" | "/manager"; q?: string }) {
   const where = q
@@ -19,7 +21,7 @@ export async function ProductListView({ basePath, q }: { basePath: "/admin" | "/
   const products = await prisma.product.findMany({
     where,
     orderBy: { updatedAt: "desc" },
-    include: { category: true, variants: true },
+    include: { category: true, variants: true, images: { orderBy: { position: "asc" }, take: 1 } },
   });
 
   return (
@@ -47,13 +49,24 @@ export async function ProductListView({ basePath, q }: { basePath: "/admin" | "/
           isEmpty={products.length === 0}
           emptyMessage="No products match."
         >
-          {products.map((product) => (
+          {products.map((product) => {
+            const primaryImage = getPrimaryImage(product.images);
+            return (
             <tr key={product.id} className="border-b border-line last:border-b-0 hover:bg-belt-50/50">
               <td className="px-4 py-3">
-                <Link href={`${basePath}/products/${product.id}`} className="text-ink hover:text-belt-700">
-                  {product.name}
-                </Link>
-                <p className="font-mono text-[10px] uppercase tracking-tag text-ink-soft">{product.sku}</p>
+                <div className="flex items-center gap-3">
+                  <div className="relative h-10 w-10 shrink-0 border border-line bg-belt-100">
+                    {primaryImage && (
+                      <Image src={primaryImage.url} alt={primaryImage.altText} fill className="object-cover" unoptimized />
+                    )}
+                  </div>
+                  <div>
+                    <Link href={`${basePath}/products/${product.id}`} className="text-ink hover:text-belt-700">
+                      {product.name}
+                    </Link>
+                    <p className="font-mono text-[10px] uppercase tracking-tag text-ink-soft">{product.sku}</p>
+                  </div>
+                </div>
               </td>
               <td className="px-4 py-3 text-ink-soft">{product.category?.name ?? "—"}</td>
               <td className="px-4 py-3">{formatPrice(product.price)}</td>
@@ -73,7 +86,8 @@ export async function ProductListView({ basePath, q }: { basePath: "/admin" | "/
                 <ProductActiveToggle productId={product.id} active={product.active} />
               </td>
             </tr>
-          ))}
+            );
+          })}
         </DataTable>
       </div>
     </div>

@@ -1,7 +1,9 @@
 import Link from "next/link";
+import Image from "next/image";
 import { formatPrice } from "@/lib/format";
 import { getProductStockStatus } from "@/lib/stock";
 import { StockBadge } from "@/components/StockBadge";
+import { getPrimaryImage, type ProductImageLike } from "@/lib/productImage";
 import type { Product, ProductVariant } from "@prisma/client";
 
 type CardProduct = Pick<
@@ -9,6 +11,7 @@ type CardProduct = Pick<
   "slug" | "name" | "price" | "region" | "roastLevel" | "flavorNotes" | "latitude" | "longitude"
 > & {
   variants: Pick<ProductVariant, "inventoryQuantity" | "reservedQuantity" | "lowStockThreshold">[];
+  images: ProductImageLike[];
 };
 
 export function ProductCard({ product }: { product: CardProduct }) {
@@ -17,10 +20,22 @@ export function ProductCard({ product }: { product: CardProduct }) {
     product.latitude != null && product.longitude != null
       ? `${product.latitude}°N · ${product.longitude}°E`
       : product.region ?? "Ethiopia";
+  const primaryImage = getPrimaryImage(product.images);
 
   return (
     <Link href={`/shop/${product.slug}`} className="group block">
-      <div className="aspect-[4/5] w-full border border-line bg-belt-100 transition-colors group-hover:bg-belt-300/60" aria-hidden />
+      <div className="relative aspect-[4/5] w-full overflow-hidden border border-line bg-belt-100 transition-colors group-hover:bg-belt-300/60">
+        {primaryImage && (
+          <Image
+            src={primaryImage.url}
+            alt={primaryImage.altText}
+            fill
+            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+            className="object-cover"
+            unoptimized
+          />
+        )}
+      </div>
       <div className="mt-4 flex items-start justify-between gap-2">
         <div>
           <span className="specimen-tag">{tag}</span>

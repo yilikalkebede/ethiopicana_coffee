@@ -59,7 +59,11 @@ export async function getCartWithTotals() {
 
   const items = await prisma.cartItem.findMany({
     where: { cartId: cart.id },
-    include: { productVariant: { include: { product: true } } },
+    include: {
+      productVariant: {
+        include: { product: { include: { images: { orderBy: { position: "asc" }, take: 1 } } } },
+      },
+    },
     orderBy: { createdAt: "asc" },
   });
 

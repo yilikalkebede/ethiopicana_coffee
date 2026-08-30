@@ -59,6 +59,7 @@ export default async function ShopPage({
       take: PAGE_SIZE,
       include: {
         variants: { select: { inventoryQuantity: true, reservedQuantity: true, lowStockThreshold: true } },
+        images: { orderBy: { position: "asc" }, take: 1 },
       },
     }),
     prisma.product.count({ where }),

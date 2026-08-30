@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { formatPrice } from "@/lib/format";
 import { availableStock } from "@/lib/stock";
+import { getPrimaryImage } from "@/lib/productImage";
 import type { CartItemDTO } from "@/components/CartProvider";
 
 export function CartLineItem({
@@ -18,6 +20,7 @@ export function CartLineItem({
   const [error, setError] = useState<string | null>(null);
   const available = availableStock(item.productVariant);
   const lineTotal = Number(item.productVariant.price) * item.quantity;
+  const primaryImage = getPrimaryImage(item.productVariant.product.images);
 
   async function changeQuantity(next: number) {
     if (next < 1) return onRemove(item.id);
@@ -39,7 +42,11 @@ export function CartLineItem({
 
   return (
     <div className="flex gap-4 border-b border-line py-5">
-      <div className="h-20 w-16 shrink-0 border border-line bg-belt-100" aria-hidden />
+      <div className="relative h-20 w-16 shrink-0 overflow-hidden border border-line bg-belt-100">
+        {primaryImage && (
+          <Image src={primaryImage.url} alt={primaryImage.altText} fill sizes="64px" className="object-cover" unoptimized />
+        )}
+      </div>
 
       <div className="flex flex-1 flex-col gap-1">
         <div className="flex items-start justify-between gap-3">

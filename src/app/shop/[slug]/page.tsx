@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { VariantSelector } from "@/components/VariantSelector";
 import { StockBadge } from "@/components/StockBadge";
 import { getProductStockStatus } from "@/lib/stock";
+import { getPrimaryImage } from "@/lib/productImage";
 
 async function getProduct(slug: string) {
   const product = await prisma.product.findUnique({
@@ -12,6 +14,7 @@ async function getProduct(slug: string) {
     include: {
       category: true,
       variants: { where: { active: true }, orderBy: [{ bagSize: "asc" }, { grind: "asc" }] },
+      images: { orderBy: { position: "asc" } },
     },
   });
   if (!product || !product.active) return null;
@@ -51,6 +54,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
       : (product.region ?? product.origin ?? "Ethiopia");
 
   const status = getProductStockStatus(product.variants);
+  const primaryImage = getPrimaryImage(product.images);
   const variantsForSelector = product.variants.map((v) => ({
     id: v.id,
     name: v.name,
@@ -71,6 +75,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
     name: product.name,
     description: product.seoDescription ?? product.shortDescription ?? product.description,
     sku: product.sku,
+    ...(primaryImage && { image: primaryImage.url }),
     ...(prices.length > 0 && {
       offers: {
         "@type": "AggregateOffer",
@@ -110,7 +115,19 @@ export default async function ProductPage({ params }: { params: { slug: string }
       </nav>
 
       <div className="mt-8 grid grid-cols-1 gap-12 md:grid-cols-2">
-        <div className="aspect-[4/5] w-full border border-line bg-belt-100" aria-hidden />
+        <div className="relative aspect-[4/5] w-full overflow-hidden border border-line bg-belt-100">
+          {primaryImage && (
+            <Image
+              src={primaryImage.url}
+              alt={primaryImage.altText}
+              fill
+              sizes="(min-width: 768px) 50vw, 100vw"
+              className="object-cover"
+              unoptimized
+              priority
+            />
+          )}
+        </div>
 
         <div>
           <span className="specimen-tag">{tag}</span>

@@ -4,6 +4,7 @@ import { requirePortalUser } from "@/lib/portalAuth";
 import { PortalShell } from "@/components/PortalShell";
 import { ProductForm, type ProductFormValues } from "@/components/ProductForm";
 import { ProductVariantsPanel } from "@/components/ProductVariantsPanel";
+import { ProductImagesPanel } from "@/components/ProductImagesPanel";
 
 export default async function ManagerEditProductPage({ params }: { params: { id: string } }) {
   await requirePortalUser("MANAGER", `/manager/products/${params.id}`);
@@ -11,7 +12,10 @@ export default async function ManagerEditProductPage({ params }: { params: { id:
   const [product, categories] = await Promise.all([
     prisma.product.findUnique({
       where: { id: params.id },
-      include: { variants: { orderBy: [{ bagSize: "asc" }, { grind: "asc" }] } },
+      include: {
+        variants: { orderBy: [{ bagSize: "asc" }, { grind: "asc" }] },
+        images: { orderBy: { position: "asc" } },
+      },
     }),
     prisma.category.findMany({ orderBy: { name: "asc" } }),
   ]);
@@ -62,6 +66,9 @@ export default async function ManagerEditProductPage({ params }: { params: { id:
               active: v.active,
             }))}
           />
+        </div>
+        <div className="mt-10">
+          <ProductImagesPanel productId={product.id} images={product.images} />
         </div>
       </div>
     </PortalShell>
