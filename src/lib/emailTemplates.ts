@@ -129,3 +129,33 @@ export function reviewRequestEmail(firstName: string, productNames: string[], or
     ),
   };
 }
+
+export function newsletterConfirmationEmail(unsubscribeToken: string) {
+  const unsubscribeUrl = `${APP_URL}/api/newsletter/unsubscribe/${unsubscribeToken}`;
+  return {
+    subject: "You're subscribed — Latitude Coffee Co.",
+    html: layout(
+      "You're on the list",
+      p("Thanks for subscribing. One email a month when a new Ethiopian lot lands — no spam.") +
+        p(
+          `<a href="${unsubscribeUrl}" style="color:#8a8072;">Unsubscribe</a> at any time.`,
+        ),
+    ),
+  };
+}
+
+export function abandonedCartEmail(
+  firstName: string,
+  items: { name: string; quantity: number }[],
+) {
+  const itemList = items.map((item) => p(`${item.name} × ${item.quantity}`)).join("");
+  return {
+    subject: "You left something in your cart",
+    html: layout(
+      "Still thinking it over?",
+      p(`Hi ${firstName}, this is still in your cart:`) +
+        itemList +
+        button(`${APP_URL}/cart`, "Return to your cart"),
+    ),
+  };
+}

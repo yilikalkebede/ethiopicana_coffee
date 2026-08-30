@@ -22,8 +22,16 @@ export async function getOrCreateCart(): Promise<Cart> {
 
   if (user) {
     const existing = await prisma.cart.findUnique({ where: { userId: user.id } });
-    if (existing) return existing;
-    return prisma.cart.create({ data: { userId: user.id } });
+    if (existing) {
+      // Backfill for carts created before this field existed, or if the
+      // user's email changed since — kept current for the abandoned-cart
+      // reminder rather than a one-time snapshot.
+      if (existing.email !== user.email) {
+        return prisma.cart.update({ where: { id: existing.id }, data: { email: user.email } });
+      }
+      return existing;
+    }
+    return prisma.cart.create({ data: { userId: user.id, email: user.email } });
   }
 
   const cookieStore = cookies();

@@ -41,6 +41,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 
   await prisma.cartItem.update({ where: { id: item.id }, data: { quantity: parsed.data.quantity } });
+  await prisma.cart.update({ where: { id: cart.id }, data: { abandonedEmailSentAt: null } });
 
   const updated = await getCartWithTotals();
   return NextResponse.json({
@@ -59,6 +60,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
   }
 
   await prisma.cartItem.delete({ where: { id: item.id } });
+  await prisma.cart.update({ where: { id: cart.id }, data: { abandonedEmailSentAt: null } });
 
   const updated = await getCartWithTotals();
   return NextResponse.json({

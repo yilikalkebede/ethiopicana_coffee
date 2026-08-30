@@ -110,12 +110,18 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   }
   if (order.paymentStatus === "PAID") return; // already processed by an earlier delivery
 
+  // Real tax, when Stripe Tax computed it (STRIPE_TAX_ENABLED) — session.amount_total
+  // is the actual amount charged, which is what points should be based on,
+  // not the pre-tax estimate order.total was created with.
+  const realTax = (session.total_details?.amount_tax ?? 0) / 100;
+  const realTotal = (session.amount_total ?? 0) / 100;
+
   await prisma.$transaction(async (tx) => {
     await tx.payment.create({
       data: {
         orderId: order.id,
         stripePaymentIntentId: paymentIntentId,
-        amount: (session.amount_total ?? 0) / 100,
+        amount: realTotal,
         currency: session.currency ?? "usd",
         status: "PAID",
       },
@@ -136,11 +142,13 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         paymentStatus: "PAID",
         status: "PAID",
         fulfillmentStatus: requiresAttention ? "REQUIRES_ATTENTION" : "UNFULFILLED",
+        tax: realTax,
+        total: realTotal,
       },
     });
 
     if (order.userId) {
-      await awardPoints(tx, order.userId, Number(order.total), `Order ${order.orderNumber}`);
+      await awardPoints(tx, order.userId, realTotal, `Order ${order.orderNumber}`);
     }
 
     // Only clear the cart now that payment is actually confirmed — not at
@@ -163,7 +171,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         quantity: item.quantity,
         total: formatPrice(item.total),
       })),
-      formatPrice(order.total)
+      formatPrice(realTotal)
     );
     await sendEmail({ to: order.email, subject, html });
   }
@@ -328,6 +336,13 @@ async function handleSubscriptionCheckoutCompleted(session: Stripe.Checkout.Sess
     current: { email: string; orderNumber: string; total: string; items: { name: string; quantity: number; total: string }[] } | null;
   } = { current: null };
 
+  // Real tax, when Stripe Tax computed it — session.amount_total is
+  // tax-inclusive, so subtotal must be backed out of it, not set to the
+  // full charge.
+  const realTax = (session.total_details?.amount_tax ?? 0) / 100;
+  const realTotal = (session.amount_total ?? 0) / 100;
+  const realSubtotal = realTotal - realTax;
+
   await prisma.$transaction(async (tx) => {
     const subscription = await tx.subscription.create({
       data: {
@@ -363,10 +378,10 @@ async function handleSubscriptionCheckoutCompleted(session: Stripe.Checkout.Sess
           status: "PAID",
           paymentStatus: "PAID",
           fulfillmentStatus: "UNFULFILLED",
-          subtotal: (session.amount_total ?? 0) / 100,
+          subtotal: realSubtotal,
           shipping: 0,
-          tax: 0,
-          total: (session.amount_total ?? 0) / 100,
+          tax: realTax,
+          total: realTotal,
           currency: session.currency ?? "usd",
           shippingAddressSnapshot: address ? addressToSnapshot(address) : {},
           items: {
@@ -378,7 +393,7 @@ async function handleSubscriptionCheckoutCompleted(session: Stripe.Checkout.Sess
                 variantNameSnapshot: variant.name,
                 quantity: bagUnits,
                 unitPrice: variant.price,
-                total: (session.amount_total ?? 0) / 100,
+                total: realSubtotal,
               },
             ],
           },
@@ -389,21 +404,21 @@ async function handleSubscriptionCheckoutCompleted(session: Stripe.Checkout.Sess
         data: {
           orderId: order.id,
           stripePaymentIntentId: paymentIntentId,
-          amount: (session.amount_total ?? 0) / 100,
+          amount: realTotal,
           currency: session.currency ?? "usd",
           status: "PAID",
         },
       });
 
       await applyInventorySale(tx, [{ variantId: variant.id, quantity: bagUnits }], order.id);
-      await awardPoints(tx, meta.userId, Number(order.total), `Order ${order.orderNumber}`);
+      await awardPoints(tx, meta.userId, realTotal, `Order ${order.orderNumber}`);
 
       if (order.email) {
         orderEmailRef.current = {
           email: order.email,
           orderNumber: order.orderNumber,
-          total: formatPrice(order.total),
-          items: [{ name: `${product.name} — ${variant.name}`, quantity: bagUnits, total: formatPrice(order.total) }],
+          total: formatPrice(realTotal),
+          items: [{ name: `${product.name} — ${variant.name}`, quantity: bagUnits, total: formatPrice(realTotal) }],
         };
       }
     } else {
@@ -496,7 +511,11 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
 
   const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
   const nextBillingDate = new Date(stripeSubscription.current_period_end * 1000);
+  // invoice.amount_paid is tax-inclusive; back the real tax out of it rather
+  // than hardcoding 0, when Stripe Tax computed one.
   const amount = (invoice.amount_paid ?? 0) / 100;
+  const realTax = (invoice.tax ?? 0) / 100;
+  const realSubtotal = amount - realTax;
   const renewalEmailRef: { current: { orderNumber: string; total: string; items: { name: string; quantity: number; total: string }[] } | null } = {
     current: null,
   };
@@ -513,9 +532,9 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
           status: "PAID",
           paymentStatus: "PAID",
           fulfillmentStatus: "UNFULFILLED",
-          subtotal: amount,
+          subtotal: realSubtotal,
           shipping: 0,
-          tax: 0,
+          tax: realTax,
           total: amount,
           currency: invoice.currency ?? "usd",
           shippingAddressSnapshot: address ? addressToSnapshot(address) : {},
@@ -528,7 +547,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
                 variantNameSnapshot: variant.name,
                 quantity: subscription.quantity,
                 unitPrice: variant.price,
-                total: amount,
+                total: realSubtotal,
               },
             ],
           },

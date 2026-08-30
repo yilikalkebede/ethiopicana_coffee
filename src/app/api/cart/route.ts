@@ -58,6 +58,9 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  // A fresh addition after a prior abandonment deserves its own reminder.
+  await prisma.cart.update({ where: { id: cart.id }, data: { abandonedEmailSentAt: null } });
+
   const updated = await getCartWithTotals();
   return NextResponse.json({
     cart: { id: updated.cart.id },

@@ -21,11 +21,14 @@ type AddressSnapshot = {
 export async function OrderDetailView({ id }: { id: string }) {
   const order = await prisma.order.findUnique({
     where: { id },
-    include: { items: true, shipments: true, payments: true, user: true },
+    include: { items: true, shipments: true, payments: true, user: true, refunds: true },
   });
   if (!order) notFound();
 
   const shippingAddress = order.shippingAddressSnapshot as AddressSnapshot | null;
+  const hasSuccessfulPayment = order.payments.some((p) => p.status === "PAID");
+  const alreadyRefunded = order.refunds.reduce((sum, r) => sum + Number(r.amount), 0);
+  const refundableAmount = hasSuccessfulPayment ? Math.max(Number(order.total) - alreadyRefunded, 0) : 0;
 
   return (
     <div>
@@ -97,6 +100,15 @@ export async function OrderDetailView({ id }: { id: string }) {
             {order.paymentStatus}
             {order.payments[0] && ` · ${formatPrice(order.payments[0].amount)}`}
           </p>
+          {order.refunds.length > 0 && (
+            <ul className="mt-2 space-y-1 font-body text-sm text-ink-soft">
+              {order.refunds.map((refund) => (
+                <li key={refund.id}>
+                  Refunded {formatPrice(refund.amount)} on {refund.createdAt.toLocaleDateString()}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
@@ -122,7 +134,12 @@ export async function OrderDetailView({ id }: { id: string }) {
         </div>
       )}
 
-      <OrderActions orderId={order.id} status={order.status} fulfillmentStatus={order.fulfillmentStatus} />
+      <OrderActions
+        orderId={order.id}
+        status={order.status}
+        fulfillmentStatus={order.fulfillmentStatus}
+        refundableAmount={refundableAmount}
+      />
     </div>
   );
 }

@@ -3,16 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";
+import { formatPrice } from "@/lib/format";
 import type { OrderStatus, FulfillmentStatus } from "@prisma/client";
 
 export function OrderActions({
   orderId,
   status,
   fulfillmentStatus,
+  refundableAmount,
 }: {
   orderId: string;
   status: OrderStatus;
   fulfillmentStatus: FulfillmentStatus;
+  refundableAmount: number;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -22,6 +25,9 @@ export function OrderActions({
   const [trackingNumber, setTrackingNumber] = useState("");
   const [resolveConfirmOpen, setResolveConfirmOpen] = useState(false);
   const [buyingLabel, setBuyingLabel] = useState(false);
+  const [refundFormOpen, setRefundFormOpen] = useState(false);
+  const [refundAmount, setRefundAmount] = useState(refundableAmount.toFixed(2));
+  const [refunding, setRefunding] = useState(false);
 
   async function runAction(action: "PROCESSING" | "PACKED" | "DELIVERED" | "RESOLVE_ATTENTION") {
     setPending(true);
@@ -73,10 +79,30 @@ export function OrderActions({
     router.refresh();
   }
 
+  async function submitRefund(e: React.FormEvent) {
+    e.preventDefault();
+    setRefunding(true);
+    setError(null);
+    const res = await fetch(`/api/admin/orders/${orderId}/refund`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: Number(refundAmount) }),
+    });
+    setRefunding(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Something went wrong.");
+      return;
+    }
+    setRefundFormOpen(false);
+    router.refresh();
+  }
+
   const showsAttentionBanner = fulfillmentStatus === "REQUIRES_ATTENTION";
   const hasProgressionAction = ["PAID", "PROCESSING", "PACKED", "SHIPPED"].includes(status);
+  const canRefund = refundableAmount > 0 && !["CANCELLED", "REFUNDED"].includes(status);
 
-  if (!showsAttentionBanner && !hasProgressionAction) {
+  if (!showsAttentionBanner && !hasProgressionAction && !canRefund) {
     return null;
   }
 
@@ -158,6 +184,43 @@ export function OrderActions({
         <button type="button" disabled={pending} onClick={() => runAction("DELIVERED")} className="btn-primary !px-5 !py-2 text-sm disabled:opacity-50">
           Mark as delivered
         </button>
+      )}
+
+      {canRefund && (
+        <div className={hasProgressionAction ? "mt-6 border-t border-line pt-6" : ""}>
+          {!refundFormOpen ? (
+            <button type="button" onClick={() => setRefundFormOpen(true)} className="btn-secondary !px-5 !py-2 text-sm">
+              Refund ({formatPrice(refundableAmount)} available)
+            </button>
+          ) : (
+            <form onSubmit={submitRefund} className="max-w-sm space-y-4 border border-line p-4">
+              <div>
+                <label className="font-body text-xs text-ink-soft" htmlFor="refundAmount">
+                  Refund amount (up to {formatPrice(refundableAmount)})
+                </label>
+                <input
+                  id="refundAmount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max={refundableAmount}
+                  required
+                  value={refundAmount}
+                  onChange={(e) => setRefundAmount(e.target.value)}
+                  className="mt-1 w-full border border-line bg-paper px-3 py-2 font-body text-sm text-ink"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button type="submit" disabled={refunding} className="bg-rust px-5 py-2 text-sm font-body font-medium text-paper transition-colors hover:bg-rust/90 disabled:opacity-50">
+                  {refunding ? "Refunding…" : "Confirm refund"}
+                </button>
+                <button type="button" onClick={() => setRefundFormOpen(false)} className="btn-secondary !px-5 !py-2 text-sm">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
       )}
 
       <ConfirmationDialog

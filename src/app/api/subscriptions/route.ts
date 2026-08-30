@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { stripe } from "@/lib/stripe";
+import { stripe, STRIPE_TAX_ENABLED } from "@/lib/stripe";
 import { addressSchema } from "@/lib/validation";
 import {
   computeSubscriptionPrice,
@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
       cancel_url: `${appUrl}/subscribe?cancelled=1`,
       metadata,
       subscription_data: { metadata },
+      ...(STRIPE_TAX_ENABLED && { automatic_tax: { enabled: true } }),
     });
 
     if (!session.url) throw new Error("Stripe did not return a session URL.");

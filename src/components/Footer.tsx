@@ -4,7 +4,7 @@ export function Footer() {
   return (
     <footer className="border-t border-line bg-paper">
       <div className="mx-auto max-w-6xl px-6 py-16">
-        <div className="grid grid-cols-2 gap-10 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-10 md:grid-cols-6">
           <div className="col-span-2">
             <p className="font-display text-lg text-ink">
               Latitude <span className="italic text-belt-500">Coffee Co.</span>
@@ -41,6 +41,16 @@ export function Footer() {
             <ul className="mt-3 space-y-2 font-body text-sm">
               <li><Link href="/about" className="hover:text-belt-700">About</Link></li>
               <li><Link href="/contact" className="hover:text-belt-700">Contact</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="font-body text-xs uppercase tracking-tag text-ink-soft">Legal</p>
+            <ul className="mt-3 space-y-2 font-body text-sm">
+              <li><Link href="/privacy" className="hover:text-belt-700">Privacy</Link></li>
+              <li><Link href="/terms" className="hover:text-belt-700">Terms</Link></li>
+              <li><Link href="/shipping-policy" className="hover:text-belt-700">Shipping</Link></li>
+              <li><Link href="/returns-policy" className="hover:text-belt-700">Returns</Link></li>
             </ul>
           </div>
         </div>

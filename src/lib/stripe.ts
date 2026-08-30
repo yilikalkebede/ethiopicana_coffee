@@ -14,3 +14,12 @@ export const stripe =
 if (process.env.NODE_ENV !== "production") {
   globalForStripe.stripe = stripe;
 }
+
+/**
+ * Off by default — real Stripe Tax calculation only works once the
+ * merchant registers a tax origin address in their own Stripe Dashboard
+ * (Settings → Tax). Flipping this on before that's done would make every
+ * Checkout Session creation fail, so every call site gates on this rather
+ * than assuming Stripe Tax is ready.
+ */
+export const STRIPE_TAX_ENABLED = process.env.STRIPE_TAX_ENABLED === "true";

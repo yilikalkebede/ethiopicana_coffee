@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { NewsletterForm } from "@/components/NewsletterForm";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -140,21 +141,7 @@ export default async function HomePage() {
           <p className="mt-2 font-body text-sm text-ink-soft">
             One email a month when a new Ethiopian lot lands. No spam.
           </p>
-          <form className="mt-6 flex gap-2">
-            <label htmlFor="newsletter-email" className="sr-only">
-              Email address
-            </label>
-            <input
-              id="newsletter-email"
-              type="email"
-              required
-              placeholder="you@example.com"
-              className="w-full border border-ink bg-paper px-4 py-3 font-body text-sm text-ink placeholder:text-ink-soft focus-visible:outline-belt-500"
-            />
-            <button type="submit" className="btn-primary shrink-0">
-              Subscribe
-            </button>
-          </form>
+          <NewsletterForm />
         </div>
       </section>
     </>

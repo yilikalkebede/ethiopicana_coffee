@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser, UnauthorizedError } from "@/lib/auth";
-import { stripe } from "@/lib/stripe";
+import { stripe, STRIPE_TAX_ENABLED } from "@/lib/stripe";
 import { giftClaimSchema } from "@/lib/validation";
 import { computeSubscriptionPrice, STRIPE_RECURRING_INTERVAL, FREQUENCY_LABEL } from "@/lib/subscriptionPricing";
 
@@ -99,6 +99,7 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
       cancel_url: `${appUrl}/gifts/claim/${params.token}?cancelled=1`,
       metadata,
       subscription_data: { metadata },
+      ...(STRIPE_TAX_ENABLED && { automatic_tax: { enabled: true } }),
     });
 
     if (!session.url) throw new Error("Stripe did not return a session URL.");

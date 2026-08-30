@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getOrCreateCart, getCartWithTotals } from "@/lib/cart";
-import { stripe } from "@/lib/stripe";
+import { stripe, STRIPE_TAX_ENABLED } from "@/lib/stripe";
 import { computeCartTotals } from "@/lib/orders";
 import { generateOrderNumber } from "@/lib/orderNumber";
 import { addressSchema } from "@/lib/validation";
@@ -331,6 +331,7 @@ export async function POST(request: NextRequest) {
       payment_intent_data: { metadata: { orderId: order.id } },
       expires_at: Math.floor(Date.now() / 1000) + settings.checkoutReservationMinutes * 60,
       discounts: stripeDiscountId ? [{ coupon: stripeDiscountId }] : undefined,
+      ...(STRIPE_TAX_ENABLED && { automatic_tax: { enabled: true } }),
     });
 
     if (!session.url) throw new Error("Stripe did not return a session URL.");

@@ -60,6 +60,7 @@ model User {
   journalPosts       JournalPost[]
   passwordResets     PasswordResetToken[]
   notificationPrefs  NotificationPreference?
+  refundsCreated     Refund[]
 
   @@index([email])
   @@index([stripeCustomerId])
@@ -363,6 +364,14 @@ model Cart {
   shippingAddressSnapshot Json?
   billingAddressSnapshot  Json?
 
+  // Abandoned-cart reminder email (Phase 11) — email is only ever known for
+  // logged-in users today (set from user.email); guest carts are out of
+  // scope since nothing captures a guest's email pre-checkout.
+  // abandonedEmailSentAt resets to null whenever items change, so a second
+  // abandonment after adding something new gets its own reminder.
+  email                String?
+  abandonedEmailSentAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -466,6 +475,7 @@ model Order {
   items     OrderItem[]
   payments  Payment[]
   shipments Shipment[]
+  refunds   Refund[]
 
   @@index([orderNumber])
   @@index([userId])
@@ -850,4 +860,39 @@ model JournalPost {
 
   @@index([slug])
   @@index([published, publishedAt])
+}
+
+// ---------------------------------------------------------------------------
+// MARKETING (Phase 11)
+// ---------------------------------------------------------------------------
+
+// Separate from NotificationPreference (which is 1:1 with a User) — most
+// newsletter signups are anonymous homepage visitors with no account.
+model NewsletterSubscriber {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  subscribedAt        DateTime  @default(now())
+  unsubscribedAt      DateTime?
+  unsubscribeTokenHash String   @unique
+}
+
+// ---------------------------------------------------------------------------
+// REFUNDS (Phase 11)
+// ---------------------------------------------------------------------------
+
+// Ledger pattern, matching InventoryTransaction/RewardTransaction — a real
+// row per refund rather than mutating Order in place, so partial refunds
+// stack correctly and there's a real audit trail of who refunded what.
+model Refund {
+  id             String   @id @default(cuid())
+  orderId        String
+  order          Order    @relation(fields: [orderId], references: [id])
+  stripeRefundId String   @unique
+  amount         Decimal  @db.Decimal(10, 2)
+  reason         String?
+  createdById    String
+  createdBy      User     @relation(fields: [createdById], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@index([orderId])
 }
