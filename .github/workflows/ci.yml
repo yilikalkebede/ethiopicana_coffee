@@ -48,6 +48,8 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm run test
       - run: npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
 
   # Slower lane: real browser E2E + accessibility scan against a real
   # production build and a real seeded database. Kept separate from the
@@ -83,6 +85,8 @@ jobs:
       - run: npm run db:seed
       - run: npx playwright install chromium --with-deps
       - run: npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
       - run: npm run test:e2e
         env:
           CI: true
