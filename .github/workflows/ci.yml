@@ -9,7 +9,6 @@ env:
   DATABASE_URL: postgresql://latitude:latitude@localhost:5432/latitude_ci
   DIRECT_URL: postgresql://latitude:latitude@localhost:5432/latitude_ci
   NEXT_PUBLIC_APP_URL: http://localhost:3000
-  NODE_ENV: development
 
 jobs:
   # Fast feedback: lint, typecheck, unit tests, and a real build. Needs a
