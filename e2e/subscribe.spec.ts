@@ -2,6 +2,12 @@ import { test, expect } from "@playwright/test";
 import { login, SEEDED_USERS } from "./helpers";
 
 test("the subscription builder reaches a real Stripe checkout redirect", async ({ page }) => {
+  // This flow calls the real Stripe API to create a Checkout Session, so it
+  // needs a real (test-mode) key. CI intentionally runs with no Stripe
+  // secret configured — everything else in this suite needs no third-party
+  // credentials, and this is the one flow that does.
+  test.skip(!process.env.STRIPE_SECRET_KEY, "Requires a real Stripe test-mode key (STRIPE_SECRET_KEY)");
+
   await login(page, SEEDED_USERS.customer.email, SEEDED_USERS.customer.password);
 
   await page.goto("/subscribe");
