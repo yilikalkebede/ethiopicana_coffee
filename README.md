@@ -2,11 +2,13 @@
 
 A premium coffee ecommerce + subscription platform, sourced entirely from
 Ethiopia. This repo is being built in phases (see **Roadmap** below);
-Phases 1 through 9 are complete — catalog, cart, checkout, subscriptions,
+Phases 1 through 10 are complete — catalog, cart, checkout, subscriptions,
 inventory, shipping, the full admin/manager portal, rewards/reviews/gifts/
-coupons, and email/SEO/analytics/performance. Phase 10 (this drop) adds an
-automated test suite, an accessibility pass, and deployment prep. See
-**Deployment** below to actually put this live.
+coupons, email/SEO/analytics/performance, an automated test suite, and an
+accessibility pass. Phase 11 adds tax calculation (Stripe Tax), real
+refunds, legal pages, a newsletter, and an abandoned-cart reminder email,
+plus product photo uploads (Vercel Blob) and a product image gallery.
+See **Deployment** below to actually put this live.
 
 ## What's in Phase 1
 
@@ -167,7 +169,8 @@ prisma/schema.prisma      full relational schema
 src/lib/auth.ts           password hashing, sessions, requireRole()/requireUser()
 src/lib/cart.ts           cart identity (guest cookie vs. user), merge-on-login
 src/lib/stock.ts          stock-status helpers (safe to import from client components)
-src/lib/config.ts         temporary business constants (free-shipping threshold, etc.)
+src/lib/settings.ts       admin-editable business settings (Settings model): shipping
+                          threshold/rate, ship-from address
 src/middleware.ts         coarse route gating (real checks are server-side)
 src/app/api/auth/*        register / login / logout
 src/app/api/admin/*       example RBAC + audit-logged admin action
@@ -185,8 +188,9 @@ src/lib/subscriptions.ts  ownership-check helper shared by the self-service rout
 src/app/api/subscriptions        creates the recurring Stripe Checkout Session
 src/app/api/subscriptions/preview   read-only live-preview endpoint for the builder
 src/app/api/account/subscriptions/[id]/*   pause / resume / skip / cancel / billing-portal / PATCH
-src/app/(marketing)       public site (homepage lives at src/app/page.tsx)
-src/app/shop               catalog browse + /shop/[slug] product detail
+src/app/page.tsx          homepage (public site has no route group — plain src/app pages)
+src/app/shop               catalog browse + /shop/[slug] product detail (real image gallery)
+src/app/origins            growing regions, grouped live from the product catalog
 src/app/cart, /checkout   cart page and checkout flow
 src/app/checkout/success  post-payment confirmation (real order, webhook-aware)
 src/app/subscribe         guided subscription builder
@@ -196,6 +200,11 @@ src/app/account/orders    real order history + detail (protected)
 src/app/account/subscription   subscription management (protected)
 src/app/manager           manager dashboard (protected)
 src/app/admin             admin dashboard (protected)
+src/app/api/admin/orders/[id]/refund   real Stripe refund (manager+), ledger-row Refund model
+src/app/api/newsletter/*  subscribe (anti-enumeration) / hashed-token unsubscribe
+src/app/api/cron/abandoned-cart   Vercel Cron target, Bearer CRON_SECRET
+src/app/api/admin/products/[id]/images/*   product photo upload/reorder/delete (Vercel Blob)
+src/app/privacy, /terms, /shipping-policy, /returns-policy   legal pages (template text)
 src/components            shared UI (Navbar, Footer, CartProvider/CartDrawer, SubscriptionBuilder/Manager, …)
 ```
 
@@ -238,10 +247,23 @@ src/components            shared UI (Navbar, Footer, CartProvider/CartDrawer, Su
   — email infrastructure is code-complete and verified end-to-end except
   real delivery, pending a Resend API key
 - ~~**Phase 10** — automated test suite, accessibility pass, deployment~~ done
-  — Vitest unit suite (94 tests) + Playwright E2E/accessibility suite (17
-  tests, real axe-core scans) + GitHub Actions CI, all locally dry-run
-  verified. Actually creating the GitHub/Vercel/database accounts and
-  clicking deploy is the one deliberate handoff — see **Deployment** below.
+  — Vitest unit suite (94 tests) + Playwright E2E/accessibility suite +
+  GitHub Actions CI, all locally dry-run verified. Actually creating the
+  GitHub/Vercel/database accounts and clicking deploy is the one deliberate
+  handoff — see **Deployment** below.
+- ~~**Phase 11** — tax, refunds, legal pages, newsletter, abandoned-cart
+  email~~ done — Stripe Tax (`STRIPE_TAX_ENABLED`, off by default until a
+  tax origin address is registered in your own Stripe Dashboard), a real
+  `stripe.refunds.create` refund flow with a ledger-row `Refund` model,
+  four legal pages (template text — needs real legal review before
+  launch), a working newsletter signup/unsubscribe, and an hourly
+  Vercel Cron abandoned-cart reminder email (3h–7d window, opt-out
+  respected) — **note**: Vercel's free Hobby tier only runs cron jobs
+  once/day, so `vercel.json`'s hourly schedule needs changing to a daily
+  one before deploying on that tier. Plus, right after: product photo
+  uploads via Vercel Blob
+  (upload/reorder/delete, verified end-to-end with a real public Blob
+  store) and a customer-facing image gallery on the product page.
 
 Each phase will ship as working, reviewable code — no stubbed dashboards or
 fake data — matching the order in the original spec.
@@ -286,8 +308,11 @@ already expects, per `prisma/schema.prisma`'s `directUrl`).
    Vercel project's dashboard — `DATABASE_URL`, `DIRECT_URL`,
    `STRIPE_SECRET_KEY`/`STRIPE_PUBLISHABLE_KEY`/`STRIPE_WEBHOOK_SECRET`,
    `EMAIL_API_KEY`/`EMAIL_FROM`, `SHIPPING_API_KEY`/`SHIPPING_WEBHOOK_SECRET`,
-   and `NEXT_PUBLIC_APP_URL` (your real production URL, once known —
-   Vercel gives you this after the first deploy, then update the var and
+   `BLOB_READ_WRITE_TOKEN` (Storage tab → Create Database → Blob, set to
+   **Public** access — required for product photo uploads), `CRON_SECRET`
+   (any random string — the abandoned-cart cron sends it as a Bearer
+   token), and `NEXT_PUBLIC_APP_URL` (your real production URL, once known
+   — Vercel gives you this after the first deploy, then update the var and
    redeploy).
 5. **Deploy**. Vercel builds and serves the app; `GET /api/health` (added
    in Phase 10) is a real database-connectivity check — hit it right after

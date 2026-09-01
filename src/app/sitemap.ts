@@ -3,7 +3,20 @@ import { prisma } from "@/lib/prisma";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-const STATIC_ROUTES = ["", "/shop", "/subscribe", "/origins", "/journal", "/about", "/contact", "/gifts"];
+const STATIC_ROUTES = [
+  "",
+  "/shop",
+  "/subscribe",
+  "/origins",
+  "/journal",
+  "/about",
+  "/contact",
+  "/gifts",
+  "/privacy",
+  "/terms",
+  "/shipping-policy",
+  "/returns-policy",
+];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [products, posts] = await Promise.all([

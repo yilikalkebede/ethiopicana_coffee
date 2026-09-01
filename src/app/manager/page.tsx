@@ -41,8 +41,8 @@ export default async function ManagerDashboardPage() {
       </div>
 
       <p className="mt-10 font-body text-sm text-ink-soft">
-        Product and inventory management are in the sidebar. Purchase orders and fulfillment
-        tools are still coming in a later phase.
+        Product and inventory management, purchase orders, and order fulfillment are all in
+        the sidebar.
       </p>
     </PortalShell>
   );

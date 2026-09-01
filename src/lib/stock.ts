@@ -8,8 +8,8 @@ type VariantStockFields = {
 
 /**
  * Available-to-sell = on hand minus whatever's already reserved. Reserved
- * quantity is always 0 until Phase 5 adds real reservation locking at
- * checkout — this is a soft, informational check today, not a hold.
+ * quantity is set by real concurrency-safe reservation locking at checkout
+ * (src/lib/inventory.ts's reserveStock/releaseReservation).
  *
  * Lives here (not in src/lib/cart.ts) deliberately: this is a pure
  * function with no next/headers dependency, so client components (e.g.

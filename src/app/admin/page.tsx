@@ -25,9 +25,8 @@ export default async function AdminDashboardPage() {
       </div>
 
       <p className="mt-10 font-body text-sm text-ink-soft">
-        Product and inventory management are in the sidebar. User management, content, and
-        settings are still coming in later phases — this dashboard only shows numbers pulled
-        live from PostgreSQL, never static placeholders.
+        Product, inventory, user management, content, and settings are all in the sidebar —
+        this dashboard only shows numbers pulled live from PostgreSQL, never static placeholders.
       </p>
     </PortalShell>
   );

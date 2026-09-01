@@ -7,7 +7,7 @@ import { formatPrice } from "@/lib/format";
 import { FREQUENCY_LABEL } from "@/lib/subscriptionPricing";
 import { SubscriptionStatusPoller } from "@/components/SubscriptionStatusPoller";
 
-export const metadata: Metadata = { title: "Subscription confirmed — Latitude Coffee Co." };
+export const metadata: Metadata = { title: "Subscription confirmed" };
 
 export default async function SubscribeSuccessPage({
   searchParams,

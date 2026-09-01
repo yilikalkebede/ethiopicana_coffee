@@ -6,7 +6,7 @@ import { ProductGrid } from "@/components/ProductGrid";
 import { Pagination } from "@/components/Pagination";
 
 export const metadata: Metadata = {
-  title: "Shop Ethiopian Coffee — Latitude Coffee Co.",
+  title: "Shop Ethiopian Coffee",
   description: "Every lot is Ethiopian — Yirgacheffe, Sidama, Guji, Harrar, Limu, and more. Search and filter the full catalog.",
 };
 

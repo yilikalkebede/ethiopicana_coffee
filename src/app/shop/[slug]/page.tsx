@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const product = await getProduct(params.slug);
   if (!product) return {};
   return {
-    title: product.seoTitle ?? `${product.name} — Latitude Coffee Co.`,
+    title: product.seoTitle ?? product.name,
     description: product.seoDescription ?? product.shortDescription ?? product.description,
   };
 }

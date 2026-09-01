@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
 import { OrderStatusPoller } from "@/components/OrderStatusPoller";
 
-export const metadata: Metadata = { title: "Order confirmation — Latitude Coffee Co." };
+export const metadata: Metadata = { title: "Order confirmation" };
 
 export default async function CheckoutSuccessPage({
   searchParams,

@@ -8,10 +8,12 @@ export type CartTotals = {
 };
 
 /**
- * Shipping is a flat, admin-editable rate (or free above an admin-editable
- * threshold — src/lib/settings.ts) until Phase 6 wires up real carrier
- * rates. Tax is always 0 here — real tax calculation is still deferred;
- * we never fabricate a tax figure.
+ * This is the pre-charge cart estimate shown before checkout — shipping
+ * falls back here only if a real EasyPost rate lookup fails (src/lib/
+ * shipping.ts), and tax is deliberately shown as 0 rather than guessed:
+ * when Stripe Tax is enabled (STRIPE_TAX_ENABLED), the real tax figure is
+ * computed by Stripe at checkout and written back onto the order from the
+ * webhook (src/app/api/webhooks/stripe/route.ts) — never fabricated here.
  */
 export function computeCartTotals(
   subtotal: CartWithTotals["subtotal"],

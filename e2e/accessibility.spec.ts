@@ -33,6 +33,11 @@ test.describe("accessibility (serious/critical WCAG 2 A/AA violations)", () => {
     await scan(page);
   });
 
+  test("origins", async ({ page }) => {
+    await page.goto("/origins");
+    await scan(page);
+  });
+
   test("login", async ({ page }) => {
     await page.goto("/login");
     await scan(page);

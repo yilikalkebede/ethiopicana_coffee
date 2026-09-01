@@ -199,7 +199,7 @@ export function CouponForm({ coupon }: { coupon?: Coupon }) {
             </label>
             <label className="flex items-center gap-2 font-body text-sm text-ink">
               <input type="checkbox" checked={form.subscriptionOnly} onChange={(e) => setForm((f) => ({ ...f, subscriptionOnly: e.target.checked }))} />
-              Subscriptions only <span className="text-ink-soft">(not yet checkable at one-time checkout)</span>
+              Subscriptions only <span className="text-ink-soft">(not yet supported — subscription checkout doesn&apos;t accept coupons yet)</span>
             </label>
             <label className="flex items-center gap-2 font-body text-sm text-ink">
               <input type="checkbox" checked={form.active} onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))} />
