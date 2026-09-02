@@ -9,7 +9,7 @@ export type CartTotals = {
 
 /**
  * This is the pre-charge cart estimate shown before checkout — shipping
- * falls back here only if a real EasyPost rate lookup fails (src/lib/
+ * falls back here only if a real Shippo rate lookup fails (src/lib/
  * shipping.ts), and tax is deliberately shown as 0 rather than guessed:
  * when Stripe Tax is enabled (STRIPE_TAX_ENABLED), the real tax figure is
  * computed by Stripe at checkout and written back onto the order from the

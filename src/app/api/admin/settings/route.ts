@@ -19,6 +19,7 @@ const settingsSchema = z.object({
   shipFromPostalCode: z.string().optional(),
   shipFromCountry: z.string().optional(),
   shipFromPhone: z.string().optional(),
+  shipFromEmail: z.string().email().optional(),
 });
 
 export async function GET() {
@@ -82,6 +83,7 @@ export async function PATCH(request: NextRequest) {
         shipFromPostalCode: updated.shipFromPostalCode,
         shipFromCountry: updated.shipFromCountry,
         shipFromPhone: updated.shipFromPhone,
+        shipFromEmail: updated.shipFromEmail,
       },
     });
   } catch (err) {

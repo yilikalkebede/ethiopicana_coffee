@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Shipping Policy" };
 // Template legal/policy text — not legal advice, and not reviewed by a
 // lawyer. Replace with real reviewed language before relying on this for
 // an actual launch. Kept accurate to what this app actually does (real
-// carrier rate-shopping via EasyPost, real order tracking).
+// carrier rate-shopping via Shippo, real order tracking).
 export default function ShippingPolicyPage() {
   return (
     <section className="mx-auto max-w-2xl px-6 py-28">

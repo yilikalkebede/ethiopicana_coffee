@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
   const settings = await getSettings();
 
   // The price doesn't matter to a shopper who already qualifies for free
-  // shipping — skip the EasyPost call entirely rather than spend one just
+  // shipping — skip the Shippo call entirely rather than spend one just
   // for display.
   if (subtotal === 0 || subtotal >= settings.freeShippingThreshold) {
     return NextResponse.json({ freeShippingEligible: true, rates: [] });
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     }
     // Never block checkout because a third party is unreachable — tell the
     // client to fall back to the flat rate instead of erroring out.
-    console.error("EasyPost rate quote failed:", err);
+    console.error("Shippo rate quote failed:", err);
     return NextResponse.json({ freeShippingEligible: false, rates: [], fallback: true });
   }
 }

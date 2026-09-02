@@ -19,6 +19,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
     shipFromPostalCode: settings.shipFromPostalCode ?? "",
     shipFromCountry: settings.shipFromCountry ?? "US",
     shipFromPhone: settings.shipFromPhone ?? "",
+    shipFromEmail: settings.shipFromEmail ?? "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +47,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
         shipFromPostalCode: form.shipFromPostalCode || undefined,
         shipFromCountry: form.shipFromCountry || undefined,
         shipFromPhone: form.shipFromPhone || undefined,
+        shipFromEmail: form.shipFromEmail || undefined,
       }),
     });
     setSubmitting(false);
@@ -117,7 +119,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
       <div className="border-t border-line pt-6">
         <h2 className="font-display text-lg text-ink">Ship from</h2>
         <p className="mt-1 font-body text-sm text-ink-soft">
-          Your return address for real shipping labels and rate quotes. Required before EasyPost can quote or buy anything.
+          Your return address for real shipping labels and rate quotes. Required before Shippo can quote or buy anything.
         </p>
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -201,6 +203,17 @@ export function SettingsForm({ settings }: { settings: Settings }) {
               onChange={(e) => setForm((f) => ({ ...f, shipFromPhone: e.target.value }))}
               className={`${inputClass} max-w-none`}
             />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="shipFromEmail">Email</label>
+            <input
+              id="shipFromEmail"
+              type="email"
+              value={form.shipFromEmail}
+              onChange={(e) => setForm((f) => ({ ...f, shipFromEmail: e.target.value }))}
+              className={`${inputClass} max-w-none`}
+            />
+            <p className="mt-1 font-body text-xs text-ink-soft">Required by some carriers (e.g. USPS) to actually purchase a label.</p>
           </div>
         </div>
       </div>

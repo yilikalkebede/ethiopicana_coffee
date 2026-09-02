@@ -6,9 +6,9 @@ import { buyLabel, snapshotToShipTo, ShippingNotConfiguredError, type AddressSna
 import { sendShippingNotification } from "@/lib/email";
 
 /**
- * Buys a real EasyPost label for a PACKED order — same precondition and
+ * Buys a real Shippo label for a PACKED order — same precondition and
  * order-transition as the manual .../ship/route.ts, but the tracking
- * number, carrier, and label URL are all real, returned by EasyPost rather
+ * number, carrier, and label URL are all real, returned by Shippo rather
  * than typed in by hand.
  */
 export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
@@ -43,7 +43,7 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
       if (err instanceof ShippingNotConfiguredError) {
         return NextResponse.json({ error: err.message }, { status: 400 });
       }
-      console.error("EasyPost label purchase failed:", err);
+      console.error("Shippo label purchase failed:", err);
       return NextResponse.json(
         { error: "Could not buy a shipping label. You can still enter tracking manually." },
         { status: 502 }
@@ -56,7 +56,7 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
           orderId: order.id,
           carrier: label.carrier,
           trackingNumber: label.trackingNumber,
-          shippingProvider: "easypost",
+          shippingProvider: "shippo",
           shippingLabelUrl: label.labelUrl,
           status: "IN_TRANSIT",
           shippedAt: new Date(),
@@ -75,7 +75,7 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
           entity: "Order",
           entityId: order.id,
           oldValue: { status: order.status },
-          newValue: { status: "SHIPPED", shipmentId: shipment.id, provider: "easypost", carrier: label.carrier },
+          newValue: { status: "SHIPPED", shipmentId: shipment.id, provider: "shippo", carrier: label.carrier },
         },
       });
 

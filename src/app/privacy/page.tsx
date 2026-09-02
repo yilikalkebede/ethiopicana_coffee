@@ -47,7 +47,7 @@ export default function PrivacyPage() {
           <p className="mt-2">We share the minimum information necessary with the services that run this store:</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li><strong className="text-ink">Stripe</strong> — processes all payments. We never store your card details.</li>
-            <li><strong className="text-ink">EasyPost</strong> — calculates shipping rates and generates shipping labels, which requires sharing your shipping address with the carrier.</li>
+            <li><strong className="text-ink">Shippo</strong> — calculates shipping rates and generates shipping labels, which requires sharing your shipping address with the carrier.</li>
             <li><strong className="text-ink">Resend</strong> — delivers the transactional and newsletter email we send you.</li>
           </ul>
           <p className="mt-2">

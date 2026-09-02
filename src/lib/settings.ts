@@ -16,6 +16,7 @@ export type Settings = {
   shipFromPostalCode: string | null;
   shipFromCountry: string | null;
   shipFromPhone: string | null;
+  shipFromEmail: string | null;
 };
 
 /**
@@ -50,5 +51,6 @@ export const getSettings = cache(async (): Promise<Settings> => {
     shipFromPostalCode: row.shipFromPostalCode,
     shipFromCountry: row.shipFromCountry,
     shipFromPhone: row.shipFromPhone,
+    shipFromEmail: row.shipFromEmail,
   };
 });

@@ -41,7 +41,7 @@ export function CheckoutForm({
   const [redirecting, setRedirecting] = useState(false);
 
   // Real-time shipping rates. `rates === null` means "no live quote yet"
-  // (address incomplete, or nothing fetched); ratesFallback means EasyPost
+  // (address incomplete, or nothing fetched); ratesFallback means Shippo
   // itself failed/was unreachable — in both cases the flat rate is shown
   // as an estimate and submission is never blocked on it. Once real
   // options exist (rates.length > 0, not free, not fallback), a selection

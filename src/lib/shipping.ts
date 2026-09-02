@@ -1,18 +1,20 @@
-import EasyPostClient from "@easypost/api";
-import type { IRate } from "@easypost/api";
+import { Shippo } from "shippo";
+import { timingSafeEqual } from "crypto";
 
-type EasyPostClientInstance = InstanceType<typeof EasyPostClient>;
+type ShippoClientInstance = InstanceType<typeof Shippo>;
 
 // Singleton pattern mirrors src/lib/stripe.ts, but lazily constructed:
 // unlike the Stripe SDK (tolerant of an empty key until first API call),
-// EasyPostClient's constructor throws immediately on a missing key, which
-// would otherwise crash Next's build-time page-data collection for every
-// route that imports this module before SHIPPING_API_KEY is ever set.
-const globalForShipping = globalThis as unknown as { shippingClient?: EasyPostClientInstance };
+// the Shippo client would otherwise send an obviously-invalid Authorization
+// header before SHIPPING_API_KEY is ever set — this defers that until the
+// first real call, same reasoning as the EasyPost client this replaced.
+const globalForShipping = globalThis as unknown as { shippingClient?: ShippoClientInstance };
 
-function getShippingClient(): EasyPostClientInstance {
+function getShippingClient(): ShippoClientInstance {
   if (!globalForShipping.shippingClient) {
-    const client = new EasyPostClient(process.env.SHIPPING_API_KEY || "missing-key");
+    // Shippo's SDK does not add the "ShippoToken " prefix itself for this
+    // security scheme — the full header value must be supplied.
+    const client = new Shippo({ apiKeyHeader: `ShippoToken ${process.env.SHIPPING_API_KEY || "missing-key"}` });
     if (process.env.NODE_ENV !== "production") {
       globalForShipping.shippingClient = client;
     }
@@ -21,14 +23,23 @@ function getShippingClient(): EasyPostClientInstance {
   return globalForShipping.shippingClient;
 }
 
-/** Only EasyPost is actually wired up (SHIPPING_PROVIDER documents which
- * provider is active; a Shippo/ShipStation adapter isn't built since
- * nothing uses them — see the Phase 6 plan). */
-export const SHIPPING_PROVIDER = "easypost";
+/** Only Shippo is actually wired up (SHIPPING_PROVIDER documents which
+ * provider is active; a ShipStation adapter isn't built since nothing uses
+ * it — see the Phase 6 plan). */
+export const SHIPPING_PROVIDER = "shippo";
 
 /** Padded-mailer + tape estimate, added on top of real product weight —
  * documented here so it isn't a mystery number buried in a rate call. */
 const PACKAGING_WEIGHT_GRAMS = 60;
+
+/** Fixed padded-mailer dimensions in inches. Shippo requires parcel
+ * dimensions on every rate request (EasyPost didn't) — this app doesn't
+ * track real per-order package dimensions, so a single representative
+ * mailer size is used for every order, same spirit as
+ * PACKAGING_WEIGHT_GRAMS above. */
+const PARCEL_LENGTH_IN = "9";
+const PARCEL_WIDTH_IN = "6";
+const PARCEL_HEIGHT_IN = "3";
 
 function gramsToOunces(grams: number): number {
   return grams * 0.035274;
@@ -51,6 +62,7 @@ export type ShipFromSettings = {
   shipFromPostalCode: string | null;
   shipFromCountry: string | null;
   shipFromPhone: string | null;
+  shipFromEmail: string | null;
 };
 
 export type ShipToAddress = {
@@ -112,7 +124,8 @@ function requireShipFromAddress(settings: ShipFromSettings) {
     !settings.shipFromCity ||
     !settings.shipFromState ||
     !settings.shipFromPostalCode ||
-    !settings.shipFromCountry
+    !settings.shipFromCountry ||
+    !settings.shipFromEmail
   ) {
     throw new ShippingNotConfiguredError();
   }
@@ -126,10 +139,11 @@ function requireShipFromAddress(settings: ShipFromSettings) {
     zip: settings.shipFromPostalCode,
     country: settings.shipFromCountry,
     phone: settings.shipFromPhone ?? undefined,
+    email: settings.shipFromEmail,
   };
 }
 
-function toEasyPostAddress(address: ShipToAddress) {
+function toShippoAddress(address: ShipToAddress) {
   return {
     name: address.name,
     company: address.company ?? undefined,
@@ -149,27 +163,38 @@ function totalParcelWeightOunces(items: ParcelLine[]): number {
 }
 
 /**
- * Creates a real EasyPost Shipment (their object — a container for rates,
+ * Creates a real Shippo Shipment (their object — a container for rates,
  * distinct from our own Prisma `Shipment` model) and returns its quoted
- * rates. Returns the raw EasyPost shipment too, since buyLabel() needs it
- * to purchase a specific rate.
+ * rates. Returns the raw Shippo shipment too, since buyLabel() needs it to
+ * purchase a specific rate (rates are shipment-scoped in Shippo, same as
+ * they were in EasyPost).
  */
 export async function getRates(shipFrom: ShipFromSettings, toAddress: ShipToAddress, items: ParcelLine[]) {
   const fromAddress = requireShipFromAddress(shipFrom);
   const weight = totalParcelWeightOunces(items);
 
-  const shipment = await getShippingClient().Shipment.create({
-    from_address: fromAddress,
-    to_address: toEasyPostAddress(toAddress),
-    parcel: { weight },
+  const shipment = await getShippingClient().shipments.create({
+    addressFrom: fromAddress,
+    addressTo: toShippoAddress(toAddress),
+    parcels: [
+      {
+        massUnit: "oz",
+        weight: weight.toFixed(2),
+        distanceUnit: "in",
+        length: PARCEL_LENGTH_IN,
+        width: PARCEL_WIDTH_IN,
+        height: PARCEL_HEIGHT_IN,
+      },
+    ],
+    async: false,
   });
 
-  const rates: RateOption[] = (shipment.rates ?? []).map((r: IRate) => ({
-    carrier: r.carrier,
-    service: r.service,
-    rate: Number(r.rate),
+  const rates: RateOption[] = (shipment.rates ?? []).map((r) => ({
+    carrier: r.provider,
+    service: r.servicelevel?.token ?? r.servicelevel?.name ?? "unknown",
+    rate: Number(r.amount),
     currency: r.currency,
-    deliveryDays: r.delivery_days ?? null,
+    deliveryDays: r.estimatedDays ?? null,
   }));
 
   return { shipment, rates };
@@ -180,7 +205,7 @@ export async function getRates(shipFrom: ShipFromSettings, toAddress: ShipToAddr
  * was quoted at checkout, or what an earlier rate call already picked for
  * a free-shipping order) if it's still available on a freshly-created
  * shipment; falls back to the cheapest available rate otherwise — rates
- * are shipment-scoped in EasyPost, so a stored rate id from checkout time
+ * are shipment-scoped in Shippo, so a stored rate id from checkout time
  * can't be reused directly against a shipment created now.
  */
 export async function buyLabel(
@@ -198,50 +223,71 @@ export async function buyLabel(
       : undefined;
   const chosen = preferred ?? rates.reduce((cheapest, r) => (r.rate < cheapest.rate ? r : cheapest), rates[0]);
 
-  const rawRate = shipment.rates.find((r: IRate) => r.carrier === chosen.carrier && r.service === chosen.service);
+  const rawRate = shipment.rates.find(
+    (r) => r.provider === chosen.carrier && (r.servicelevel?.token ?? r.servicelevel?.name ?? "unknown") === chosen.service
+  );
   if (!rawRate) throw new Error("Selected rate was no longer available on the shipment.");
-  const bought = await getShippingClient().Shipment.buy(shipment.id, rawRate);
+
+  const transaction = await getShippingClient().transactions.create({
+    rate: rawRate.objectId,
+    labelFileType: "PDF",
+    async: false,
+  });
+
+  if (!transaction.trackingNumber) {
+    throw new Error("Shippo did not return a tracking number for the purchased label.");
+  }
 
   return {
-    trackingNumber: bought.tracking_code,
-    carrier: bought.selected_rate?.carrier ?? chosen.carrier,
-    service: bought.selected_rate?.service ?? chosen.service,
-    labelUrl: bought.postage_label?.label_url ?? null,
-    trackingUrl: bought.tracker?.public_url ?? null,
+    trackingNumber: transaction.trackingNumber,
+    carrier: chosen.carrier,
+    service: chosen.service,
+    labelUrl: transaction.labelUrl ?? null,
+    trackingUrl: transaction.trackingUrlProvider ?? null,
   };
 }
 
-/** On-demand tracking refresh for the manual fallback UI — EasyPost
- * de-dupes Tracker.create() against an existing tracking_code+carrier
- * pair, so this just returns the current status rather than creating a
- * duplicate. */
+/** On-demand tracking refresh for the manual fallback UI. */
 export async function getTrackerStatus(trackingCode: string, carrier: string) {
-  const tracker = await getShippingClient().Tracker.create({ tracking_code: trackingCode, carrier });
-  return { status: tracker.status, statusDetail: tracker.status_detail ?? null };
+  const track = await getShippingClient().trackingStatus.get(trackingCode, carrier);
+  return { status: track.trackingStatus?.status ?? "UNKNOWN", statusDetail: track.trackingStatus?.statusDetails ?? null };
 }
 
-/** Throws if the signature doesn't match — callers must treat that as an
- * invalid/untrusted request, same discipline as the Stripe webhook. */
-export function validateWebhook(rawBody: Buffer, headers: Record<string, string>, secret: string) {
-  return getShippingClient().Utils.validateWebhook(rawBody, headers, secret);
+/**
+ * Shippo's own SDK ships a function called `validateWebhook`, but reading
+ * its source confirms it only parses the payload against known schemas —
+ * it performs no cryptographic verification at all. Real HMAC webhook
+ * signing requires contacting Shippo's solutions team to provision a
+ * token, which isn't available on a self-serve account. So this endpoint
+ * is secured with a shared secret embedded in the registered webhook URL
+ * instead (checked with a constant-time comparison) — the same pattern
+ * this app already uses for the Vercel Cron endpoint (CRON_SECRET as a
+ * bearer token). Callers must treat a false return as an invalid/untrusted
+ * request, same discipline as the Stripe webhook.
+ */
+export function isValidWebhookToken(url: URL, secret: string): boolean {
+  const provided = url.searchParams.get("token") ?? "";
+  if (!secret || provided.length !== secret.length) return false;
+  return timingSafeEqual(Buffer.from(provided), Buffer.from(secret));
 }
 
 export type PrismaShipmentStatus = "LABEL_CREATED" | "IN_TRANSIT" | "DELIVERED" | "RETURNED" | "FAILED";
 
+/** Shippo's tracking-status vocabulary (TrackingStatusEnum) is a small,
+ * uppercase, closed set — a much closer match to this app's own
+ * ShipmentStatus enum than EasyPost's lowercase, more granular one was. */
 export function mapTrackerStatus(status: string): PrismaShipmentStatus {
   switch (status) {
-    case "delivered":
+    case "DELIVERED":
       return "DELIVERED";
-    case "in_transit":
-    case "out_for_delivery":
-    case "available_for_pickup":
+    case "TRANSIT":
       return "IN_TRANSIT";
-    case "return_to_sender":
-    case "cancelled":
+    case "RETURNED":
       return "RETURNED";
-    case "failure":
-    case "error":
+    case "FAILURE":
       return "FAILED";
+    case "PRE_TRANSIT":
+    case "UNKNOWN":
     default:
       return "LABEL_CREATED";
   }

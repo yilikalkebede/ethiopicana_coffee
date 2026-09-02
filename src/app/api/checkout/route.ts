@@ -141,8 +141,8 @@ export async function POST(request: NextRequest) {
   // never trusted from the client, mirroring "payment state only ever
   // written by the webhook." The client's carrier/service (from the real
   // quotes it was shown at /api/checkout/rates) is a preference to match
-  // against a fresh EasyPost query, not a price. Falls back to the flat
-  // Settings rate if EasyPost errors or ship-from isn't configured —
+  // against a fresh Shippo query, not a price. Falls back to the flat
+  // Settings rate if Shippo errors or ship-from isn't configured —
   // checkout must never hard-fail because a third party is unreachable.
   let totals = computeCartTotals(subtotal, settings);
   let selectedCarrier: string | null = null;
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
       totals = { subtotal, shipping, tax: 0, total: subtotal + shipping };
     }
   } catch (err) {
-    console.error("EasyPost rate lookup failed at checkout, falling back to flat rate:", err);
+    console.error("Shippo rate lookup failed at checkout, falling back to flat rate:", err);
   }
 
   // Coupon — re-validated from scratch against the real subtotal, never

@@ -21,7 +21,7 @@ export type ApplyTrackerStatusResult = {
 /**
  * Applies a new tracking status to a Shipment, and — on delivery — advances
  * the parent Order the same way the manual "Mark as delivered" admin action
- * does. Shared by the EasyPost webhook (automatic) and the manual "Refresh
+ * does. Shared by the Shippo webhook (automatic) and the manual "Refresh
  * tracking" action, so both paths always leave identical state rather than
  * drifting apart. No-ops if the status hasn't actually changed, or if the
  * order isn't in the one state ("SHIPPED") a delivery event should ever
@@ -32,7 +32,7 @@ export async function applyTrackerStatus(
   tx: Prisma.TransactionClient,
   shipment: Shipment,
   newStatus: PrismaShipmentStatus,
-  source: "easypost_webhook" | "manual_refresh"
+  source: "shippo_webhook" | "manual_refresh"
 ): Promise<ApplyTrackerStatusResult> {
   if (newStatus === shipment.status) return { changed: false, deliveredOrder: null };
 

@@ -53,7 +53,7 @@ export async function sendEmail({
 }
 
 /**
- * Shared by both the manual ship route and the real EasyPost label route
+ * Shared by both the manual ship route and the real Shippo label route
  * (they'd otherwise duplicate this exact check) — the one send in this app
  * gated on a real user preference (`NotificationPreference.shippingNotifications`).
  * A guest order (no userId) has no preference row to check, so it always sends.
@@ -81,7 +81,7 @@ export async function sendShippingNotification(
 /**
  * Shared by both places an order can actually become DELIVERED — the
  * manual admin action (src/app/api/admin/orders/[id]/status/route.ts) and
- * the real EasyPost tracking webhook's auto-delivery path
+ * the real Shippo tracking webhook's auto-delivery path
  * (src/lib/shipments.ts) — so both converge on sending the same email, not
  * just the same order state.
  */

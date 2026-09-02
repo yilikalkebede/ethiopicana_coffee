@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { snapshotToShipTo, mapTrackerStatus } from "@/lib/shipping";
+import { snapshotToShipTo, mapTrackerStatus, isValidWebhookToken } from "@/lib/shipping";
 
 describe("snapshotToShipTo", () => {
-  it("joins first/last name and maps address fields to EasyPost's shape", () => {
+  it("joins first/last name and maps address fields to Shippo's shape", () => {
     const snapshot = {
       firstName: "Ada",
       lastName: "Rios",
@@ -50,26 +50,49 @@ describe("snapshotToShipTo", () => {
 
 describe("mapTrackerStatus", () => {
   it("maps delivered", () => {
-    expect(mapTrackerStatus("delivered")).toBe("DELIVERED");
+    expect(mapTrackerStatus("DELIVERED")).toBe("DELIVERED");
   });
 
-  it("maps every in-transit variant", () => {
-    expect(mapTrackerStatus("in_transit")).toBe("IN_TRANSIT");
-    expect(mapTrackerStatus("out_for_delivery")).toBe("IN_TRANSIT");
-    expect(mapTrackerStatus("available_for_pickup")).toBe("IN_TRANSIT");
+  it("maps transit", () => {
+    expect(mapTrackerStatus("TRANSIT")).toBe("IN_TRANSIT");
   });
 
-  it("maps returned/cancelled to RETURNED", () => {
-    expect(mapTrackerStatus("return_to_sender")).toBe("RETURNED");
-    expect(mapTrackerStatus("cancelled")).toBe("RETURNED");
+  it("maps returned", () => {
+    expect(mapTrackerStatus("RETURNED")).toBe("RETURNED");
   });
 
-  it("maps failure/error to FAILED", () => {
-    expect(mapTrackerStatus("failure")).toBe("FAILED");
-    expect(mapTrackerStatus("error")).toBe("FAILED");
+  it("maps failure to FAILED", () => {
+    expect(mapTrackerStatus("FAILURE")).toBe("FAILED");
+  });
+
+  it("maps pre-transit and unknown to LABEL_CREATED", () => {
+    expect(mapTrackerStatus("PRE_TRANSIT")).toBe("LABEL_CREATED");
+    expect(mapTrackerStatus("UNKNOWN")).toBe("LABEL_CREATED");
   });
 
   it("falls back to LABEL_CREATED for an unrecognized status rather than throwing", () => {
     expect(mapTrackerStatus("some_new_unmapped_status")).toBe("LABEL_CREATED");
+  });
+});
+
+describe("isValidWebhookToken", () => {
+  it("accepts a matching token", () => {
+    const url = new URL("https://example.com/api/webhooks/shippo?token=real-secret");
+    expect(isValidWebhookToken(url, "real-secret")).toBe(true);
+  });
+
+  it("rejects a wrong token", () => {
+    const url = new URL("https://example.com/api/webhooks/shippo?token=wrong-guess");
+    expect(isValidWebhookToken(url, "real-secret")).toBe(false);
+  });
+
+  it("rejects a missing token", () => {
+    const url = new URL("https://example.com/api/webhooks/shippo");
+    expect(isValidWebhookToken(url, "real-secret")).toBe(false);
+  });
+
+  it("rejects when no secret is configured, even with a token present", () => {
+    const url = new URL("https://example.com/api/webhooks/shippo?token=anything");
+    expect(isValidWebhookToken(url, "")).toBe(false);
   });
 });

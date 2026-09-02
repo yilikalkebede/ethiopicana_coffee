@@ -7,10 +7,10 @@ import { sendReviewRequest } from "@/lib/email";
 
 /**
  * On-demand tracking check — the practical fallback for the fact that
- * EasyPost can't deliver real webhooks to localhost during development
- * (see src/app/api/webhooks/easypost/route.ts). This is an outbound call
- * this app initiates, so it works today regardless of deployment; in
- * production it's a convenience alongside the webhook, not a replacement.
+ * Shippo can't deliver real webhooks to localhost during development (see
+ * src/app/api/webhooks/shippo/route.ts). This is an outbound call this app
+ * initiates, so it works today regardless of deployment; in production
+ * it's a convenience alongside the webhook, not a replacement.
  */
 export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -29,7 +29,7 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
     try {
       tracker = await getTrackerStatus(shipment.trackingNumber, shipment.carrier);
     } catch (err) {
-      console.error("EasyPost tracker refresh failed:", err);
+      console.error("Shippo tracker refresh failed:", err);
       return NextResponse.json({ error: "Could not reach the tracking provider. Try again shortly." }, { status: 502 });
     }
 

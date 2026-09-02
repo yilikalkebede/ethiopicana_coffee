@@ -455,10 +455,10 @@ model Order {
   shippingAddressSnapshot Json
   billingAddressSnapshot  Json?
 
-  // Real EasyPost carrier/service the shopper was quoted at checkout (or,
+  // Real Shippo carrier/service the shopper was quoted at checkout (or,
   // for a free-shipping order, the cheapest real option — Phase 6). Read
   // back at ship-time as a preference, never as a trusted price on its own;
-  // null when EasyPost was unavailable at checkout, in which case ship-time
+  // null when Shippo was unavailable at checkout, in which case ship-time
   // just re-quotes and picks cheapest with no preference to match.
   selectedCarrier String?
   selectedService String?
@@ -824,9 +824,9 @@ model Settings {
   flatShippingRate           Decimal  @db.Decimal(10, 2) @default(6)
   checkoutReservationMinutes Int      @default(30)
 
-  // "Ship from" address — required for any real EasyPost rate/label call
+  // "Ship from" address — required for any real Shippo rate/label call
   // (Phase 6). Nullable/blank until an admin fills them in via Settings;
-  // src/lib/shipping.ts refuses to call out to EasyPost without a complete
+  // src/lib/shipping.ts refuses to call out to Shippo without a complete
   // origin address rather than silently using a fake one.
   shipFromName       String?
   shipFromCompany    String?
@@ -837,6 +837,10 @@ model Settings {
   shipFromPostalCode String?
   shipFromCountry    String?
   shipFromPhone      String?
+  // Discovered required at real label-purchase time, not just rate quoting
+  // — USPS rejects a Shippo transaction with "address_from.email must not
+  // be empty" otherwise. Required alongside the other shipFrom fields.
+  shipFromEmail      String?
 
   updatedAt DateTime @updatedAt
 }

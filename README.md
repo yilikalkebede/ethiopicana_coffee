@@ -237,10 +237,12 @@ src/components            shared UI (Navbar, Footer, CartProvider/CartDrawer, Su
 - ~~**Phase 4** — subscription engine + guided subscription builder + full
   account-portal self-service (pause/skip/change/cancel)~~ done
 - ~~**Phase 5** — inventory dashboard, reservations, purchase orders~~ done
-- ~~**Phase 6** — shipping integration (EasyPost), fulfillment, tracking~~ done
-  — code complete and verified via fallback paths + synthetic signed
-  webhooks; real label-purchase/live-rate testing still pending an EasyPost
-  API key
+- ~~**Phase 6** — shipping integration (Shippo), fulfillment, tracking~~ done
+  — code complete and verified end-to-end with a real Shippo test-mode key
+  (real rate quotes, a real purchased label, and a synthetic signed
+  webhook — Shippo has no self-serve webhook signature verification, so
+  the endpoint is secured with a shared-secret URL token instead, see
+  `src/lib/shipping.ts`)
 - ~~**Phase 7** — full admin dashboard, user/product/content management~~ done
 - ~~**Phase 8** — rewards, reviews, gifts, coupons~~ done
 - ~~**Phase 9** — analytics, SEO, email automation, performance~~ done
@@ -284,7 +286,7 @@ fake data — matching the order in the original spec.
 - `.github/workflows/ci.yml` runs both suites (plus lint, `tsc --noEmit`,
   and a real `npm run build`) on every push/PR once this repo has a GitHub
   remote — provisions its own throwaway Postgres service container, so it
-  needs no secrets to pass (Stripe/EasyPost/Resend all degrade gracefully
+  needs no secrets to pass (Stripe/Shippo/Resend all degrade gracefully
   to a no-op when their API key is unset — verified by building with all
   three blanked out).
 
@@ -325,8 +327,10 @@ already expects, per `prisma/schema.prisma`'s `directUrl`).
      `invoice.paid`, `invoice.payment_failed`,
      `customer.subscription.deleted`, `customer.subscription.updated` —
      copy the new webhook's signing secret into `STRIPE_WEBHOOK_SECRET`.
-   - EasyPost: `https://<your-domain>/api/webhooks/easypost` (event:
-     tracker updates) — copy its secret into `SHIPPING_WEBHOOK_SECRET`.
+   - Shippo: `https://<your-domain>/api/webhooks/shippo?token=<SHIPPING_WEBHOOK_SECRET>`
+     (event: `track_updated`) — Shippo has no self-serve HMAC webhook
+     signing, so the secret is a token in the URL itself rather than a
+     signature header; register the URL with the token already embedded.
 
 Not done by this repo on your behalf: creating the GitHub/Vercel/Neon
 accounts, pushing to a remote, or running the actual deploy — those need

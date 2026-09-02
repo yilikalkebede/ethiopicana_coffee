@@ -13,8 +13,8 @@ const shipSchema = z.object({
  * Records that an order shipped — carrier/tracking number are whatever the
  * admin was actually given (by hand, over the phone, from a label they
  * printed elsewhere). No carrier API is called here; this is the manual
- * fallback kept alongside the real EasyPost label purchase at
- * .../ship/label/route.ts, for anything EasyPost can't quote.
+ * fallback kept alongside the real Shippo label purchase at
+ * .../ship/label/route.ts, for anything Shippo can't quote.
  */
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {

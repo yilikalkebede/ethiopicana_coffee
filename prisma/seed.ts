@@ -375,7 +375,7 @@ async function main() {
           bagSize: v.bagSize,
           grind: v.grind,
           price: coffee.price,
-          // Net coffee weight — real, needed for real EasyPost rate/label
+          // Net coffee weight — real, needed for real Shippo rate/label
           // calls (Phase 6). Every current variant is a 12oz bag.
           weightGrams: v.bagSize === "12oz" ? 340 : undefined,
           inventoryQuantity: v.inventoryQuantity,
