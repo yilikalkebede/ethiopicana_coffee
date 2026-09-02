@@ -4,7 +4,12 @@
 // tables rather than being retrofitted in.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Vercel's serverless build/runtime needs the rhel-openssl-3.0.x query
+  // engine binary; this project is developed on Windows, so without this
+  // Prisma only ships the binary for the local dev machine and the build
+  // fails collecting page data for any route that touches the DB.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
