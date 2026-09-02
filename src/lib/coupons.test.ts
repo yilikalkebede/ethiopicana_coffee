@@ -36,94 +36,107 @@ describe("validateCoupon", () => {
 
   it("throws for a code that doesn't exist", async () => {
     prismaMock.coupon.findUnique.mockResolvedValue(null);
-    await expect(validateCoupon("NOPE", { subtotal: 100, userId: null })).rejects.toThrow(CouponInvalidError);
+    await expect(validateCoupon("NOPE", { subtotal: 100, userId: null, context: "one-time" })).rejects.toThrow(CouponInvalidError);
   });
 
   it("throws for an inactive coupon", async () => {
     prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ active: false }));
-    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: null })).rejects.toThrow(CouponInvalidError);
+    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: null, context: "one-time" })).rejects.toThrow(CouponInvalidError);
   });
 
   it("throws for a coupon that hasn't started yet", async () => {
     const future = new Date(Date.now() + 86400_000);
     prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ startsAt: future }));
-    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: null })).rejects.toThrow("isn't active yet");
+    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: null, context: "one-time" })).rejects.toThrow("isn't active yet");
   });
 
   it("throws for an expired coupon", async () => {
     const past = new Date(Date.now() - 86400_000);
     prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ expiresAt: past }));
-    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: null })).rejects.toThrow("expired");
+    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: null, context: "one-time" })).rejects.toThrow("expired");
   });
 
   it("throws when subtotal is below the minimum purchase", async () => {
     prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ minimumPurchase: 50 }));
-    await expect(validateCoupon("SAVE10", { subtotal: 20, userId: null })).rejects.toThrow("minimum order");
+    await expect(validateCoupon("SAVE10", { subtotal: 20, userId: null, context: "one-time" })).rejects.toThrow("minimum order");
   });
 
   it("throws when the usage limit has been fully redeemed", async () => {
     prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ usageLimit: 5, timesUsed: 5 }));
-    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: null })).rejects.toThrow("fully redeemed");
+    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: null, context: "one-time" })).rejects.toThrow("fully redeemed");
   });
 
   it("computes a percentage discount, clamped to the subtotal", async () => {
     prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ type: "PERCENTAGE", value: 200 }));
-    const result = await validateCoupon("SAVE10", { subtotal: 40, userId: null });
+    const result = await validateCoupon("SAVE10", { subtotal: 40, userId: null, context: "one-time" });
     expect(result.discount).toBe(40); // 200% of $40 would be $80 -- must clamp to the subtotal
     expect(result.freeShipping).toBe(false);
   });
 
   it("computes a normal percentage discount", async () => {
     prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ type: "PERCENTAGE", value: 10 }));
-    const result = await validateCoupon("SAVE10", { subtotal: 100, userId: null });
+    const result = await validateCoupon("SAVE10", { subtotal: 100, userId: null, context: "one-time" });
     expect(result.discount).toBe(10);
   });
 
   it("computes a fixed discount, clamped to the subtotal", async () => {
     prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ type: "FIXED", value: 25 }));
-    const result = await validateCoupon("SAVE10", { subtotal: 10, userId: null });
+    const result = await validateCoupon("SAVE10", { subtotal: 10, userId: null, context: "one-time" });
     expect(result.discount).toBe(10); // a $25-off code on a $10 cart can't go negative
   });
 
-  it("returns zero discount and freeShipping=true for a FREE_SHIPPING coupon", async () => {
+  it("returns zero discount and freeShipping=true for a FREE_SHIPPING coupon at one-time checkout", async () => {
     prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ type: "FREE_SHIPPING", value: 0 }));
-    const result = await validateCoupon("SAVE10", { subtotal: 100, userId: null });
+    const result = await validateCoupon("SAVE10", { subtotal: 100, userId: null, context: "one-time" });
     expect(result.discount).toBe(0);
     expect(result.freeShipping).toBe(true);
   });
 
   it("throws for a subscription-only coupon used on a one-time order", async () => {
     prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ subscriptionOnly: true }));
-    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: null })).rejects.toThrow("subscriptions");
+    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: null, context: "one-time" })).rejects.toThrow("subscriptions");
+  });
+
+  it("allows a subscription-only coupon at subscription checkout", async () => {
+    prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ subscriptionOnly: true, type: "FIXED", value: 5 }));
+    const result = await validateCoupon("SAVE10", { subtotal: 100, userId: null, context: "subscription" });
+    expect(result.discount).toBe(5);
+  });
+
+  it("throws for a FREE_SHIPPING coupon used at subscription checkout", async () => {
+    prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ type: "FREE_SHIPPING", value: 0 }));
+    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: null, context: "subscription" })).rejects.toThrow(
+      "can't be used on a subscription"
+    );
   });
 
   it("requires sign-in for a first-order-only coupon", async () => {
     prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ firstOrderOnly: true }));
-    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: null })).rejects.toThrow("Sign in");
+    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: null, context: "one-time" })).rejects.toThrow("Sign in");
   });
 
   it("rejects a first-order-only coupon when the user already has a paid order", async () => {
     prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ firstOrderOnly: true }));
     prismaMock.order.findFirst.mockResolvedValue({ id: "prior-order" });
-    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: "user-1" })).rejects.toThrow("first orders only");
+    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: "user-1", context: "one-time" })).rejects.toThrow("first orders only");
   });
 
   it("rejects when the user has hit their per-user redemption limit", async () => {
     prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ perUserLimit: 1 }));
     prismaMock.order.count.mockResolvedValue(1);
-    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: "user-1" })).rejects.toThrow("already used");
+    await expect(validateCoupon("SAVE10", { subtotal: 100, userId: "user-1", context: "one-time" })).rejects.toThrow("already used");
   });
 
   it("allows a per-user-limited coupon when the user hasn't hit the limit yet", async () => {
     prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon({ perUserLimit: 2, type: "FIXED", value: 5 }));
     prismaMock.order.count.mockResolvedValue(1);
-    const result = await validateCoupon("SAVE10", { subtotal: 100, userId: "user-1" });
+    const result = await validateCoupon("SAVE10", { subtotal: 100, userId: "user-1", context: "one-time" });
     expect(result.discount).toBe(5);
   });
 
   it("uppercases and trims the code before lookup", async () => {
     prismaMock.coupon.findUnique.mockResolvedValue(baseCoupon());
-    await validateCoupon("  save10  ", { subtotal: 100, userId: null });
+    await validateCoupon("  save10  ", { subtotal: 100, userId: null, context: "one-time" });
     expect(prismaMock.coupon.findUnique).toHaveBeenCalledWith({ where: { code: "SAVE10" } });
   });
 });

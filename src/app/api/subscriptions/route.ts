@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { stripe, STRIPE_TAX_ENABLED } from "@/lib/stripe";
 import { addressSchema } from "@/lib/validation";
+import { validateCoupon, CouponInvalidError } from "@/lib/coupons";
 import {
   computeSubscriptionPrice,
   STRIPE_RECURRING_INTERVAL,
@@ -20,6 +21,7 @@ const subscribeSchema = z.object({
   frequency: z.enum(["EVERY_2_WEEKS", "EVERY_4_WEEKS", "EVERY_6_WEEKS", "EVERY_8_WEEKS"]),
   shippingAddressId: z.string().optional(),
   shippingAddress: addressSchema.optional(),
+  couponCode: z.string().optional(),
 });
 
 /**
@@ -72,6 +74,26 @@ export async function POST(request: NextRequest) {
   const { interval, interval_count } = STRIPE_RECURRING_INTERVAL[data.frequency];
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
+  // Re-validated from scratch here, never trusted from the client's own
+  // preview — same discipline as one-time checkout's coupon handling. The
+  // discount only ever applies to this first shipment (see the Stripe
+  // Coupon below, duration: "once"); renewals are never discounted.
+  let couponId: string | undefined;
+  let discount = 0;
+  if (data.couponCode) {
+    try {
+      const application = await validateCoupon(data.couponCode, { subtotal: price, userId: user.id, context: "subscription" });
+      couponId = application.coupon.id;
+      discount = application.discount;
+      await prisma.coupon.update({ where: { id: couponId }, data: { timesUsed: { increment: 1 } } });
+    } catch (err) {
+      if (err instanceof CouponInvalidError) {
+        return NextResponse.json({ error: err.message }, { status: 400 });
+      }
+      throw err;
+    }
+  }
+
   // Everything the webhook needs to build the Subscription row lives in
   // metadata — the webhook never has to guess or re-derive preferences.
   const metadata: Record<string, string> = {
@@ -84,9 +106,25 @@ export async function POST(request: NextRequest) {
     flavorPreference: JSON.stringify(data.flavorPreference),
     ounces: String(data.ounces),
     frequency: data.frequency,
+    ...(couponId && { couponId, discount: String(discount) }),
   };
 
   try {
+    // Same mechanism as one-time checkout's discount (src/app/api/checkout/
+    // route.ts): a dynamically-created, dollar-amount Stripe Coupon rather
+    // than a percentage or a Stripe Promotion Code, so the charged total
+    // matches this app's own computed discount exactly.
+    let stripeDiscountId: string | undefined;
+    if (discount > 0) {
+      const stripeCoupon = await stripe.coupons.create({
+        amount_off: Math.round(discount * 100),
+        currency: "usd",
+        duration: "once",
+        name: `Subscription discount (${data.couponCode})`,
+      });
+      stripeDiscountId = stripeCoupon.id;
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: stripeCustomerId,
@@ -105,6 +143,7 @@ export async function POST(request: NextRequest) {
       cancel_url: `${appUrl}/subscribe?cancelled=1`,
       metadata,
       subscription_data: { metadata },
+      discounts: stripeDiscountId ? [{ coupon: stripeDiscountId }] : undefined,
       ...(STRIPE_TAX_ENABLED && { automatic_tax: { enabled: true } }),
     });
 

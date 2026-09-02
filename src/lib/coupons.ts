@@ -16,14 +16,19 @@ export type CouponApplication = {
 
 /**
  * The one source of truth for "is this code usable right now, and what does
- * it actually save" — used identically by the live checkout preview
- * (src/app/api/checkout/coupon/route.ts) and the authoritative re-check at
- * order creation (src/app/api/checkout/route.ts). Never trust a discount
- * amount the client computed itself, same discipline as shipping rates.
+ * it actually save" — used identically by the live checkout preview and
+ * authoritative re-check at order creation, for both one-time checkout
+ * (src/app/api/checkout/{coupon/,}route.ts) and subscription checkout
+ * (src/app/api/subscriptions/{coupon/,}route.ts). `context` decides which
+ * coupons are usable where: `subscriptionOnly` coupons are rejected at
+ * one-time checkout, and FREE_SHIPPING coupons are rejected at subscription
+ * checkout (no separate shipping line item there to discount). Never trust
+ * a discount amount the client computed itself, same discipline as
+ * shipping rates.
  */
 export async function validateCoupon(
   code: string,
-  { subtotal, userId }: { subtotal: number; userId: string | null }
+  { subtotal, userId, context }: { subtotal: number; userId: string | null; context: "one-time" | "subscription" }
 ): Promise<CouponApplication> {
   const coupon = await prisma.coupon.findUnique({ where: { code: code.trim().toUpperCase() } });
   if (!coupon || !coupon.active) {
@@ -43,8 +48,11 @@ export async function validateCoupon(
   if (coupon.usageLimit != null && coupon.timesUsed >= coupon.usageLimit) {
     throw new CouponInvalidError("That code has already been fully redeemed.");
   }
-  if (coupon.subscriptionOnly) {
+  if (context === "one-time" && coupon.subscriptionOnly) {
     throw new CouponInvalidError("This code is for subscriptions.");
+  }
+  if (context === "subscription" && coupon.type === "FREE_SHIPPING") {
+    throw new CouponInvalidError("This code applies to shipping and can't be used on a subscription.");
   }
 
   if (coupon.firstOrderOnly || coupon.perUserLimit != null) {

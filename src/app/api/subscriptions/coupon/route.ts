@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { getCartWithTotals } from "@/lib/cart";
 import { validateCoupon, CouponInvalidError } from "@/lib/coupons";
+import { computeSubscriptionPrice, SUBSCRIPTION_OUNCE_OPTIONS } from "@/lib/subscriptionPricing";
 
-const previewSchema = z.object({ code: z.string().min(1) });
+const previewSchema = z.object({
+  code: z.string().min(1),
+  ounces: z.number().int().refine((v) => (SUBSCRIPTION_OUNCE_OPTIONS as readonly number[]).includes(v)),
+});
 
 /**
- * Live preview for the checkout form's discount-code field — mirrors
- * /api/checkout/rates: shows the shopper the real discount before they
- * submit, but POST /api/checkout independently re-validates and re-applies
- * the code at order-creation time rather than trusting this response.
+ * Live preview for the subscription builder's discount-code field — mirrors
+ * /api/checkout/coupon: shows the shopper the real discount before they
+ * submit, but POST /api/subscriptions independently re-validates and
+ * re-applies the code at session-creation time rather than trusting this
+ * response.
  */
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
@@ -20,14 +24,13 @@ export async function POST(request: NextRequest) {
   }
 
   const user = await getCurrentUser();
-  const { subtotal } = await getCartWithTotals();
+  const price = computeSubscriptionPrice(parsed.data.ounces);
 
   try {
-    const application = await validateCoupon(parsed.data.code, { subtotal, userId: user?.id ?? null, context: "one-time" });
+    const application = await validateCoupon(parsed.data.code, { subtotal: price, userId: user?.id ?? null, context: "subscription" });
     return NextResponse.json({
       valid: true,
       discount: application.discount,
-      freeShipping: application.freeShipping,
       type: application.coupon.type,
     });
   } catch (err) {

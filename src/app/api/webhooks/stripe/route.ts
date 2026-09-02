@@ -280,6 +280,8 @@ type SubscriptionMetadata = {
   flavorPreference: string[];
   ounces: number;
   frequency: "EVERY_2_WEEKS" | "EVERY_4_WEEKS" | "EVERY_6_WEEKS" | "EVERY_8_WEEKS";
+  couponId?: string;
+  discount?: number;
 };
 
 function parseSubscriptionMetadata(raw: Stripe.Metadata | null | undefined): SubscriptionMetadata | null {
@@ -294,6 +296,8 @@ function parseSubscriptionMetadata(raw: Stripe.Metadata | null | undefined): Sub
       flavorPreference: JSON.parse(raw.flavorPreference ?? "[]"),
       ounces: Number(raw.ounces),
       frequency: raw.frequency as SubscriptionMetadata["frequency"],
+      ...(raw.couponId && { couponId: raw.couponId }),
+      ...(raw.discount && { discount: Number(raw.discount) }),
     };
   } catch {
     return null;
@@ -382,6 +386,8 @@ async function handleSubscriptionCheckoutCompleted(session: Stripe.Checkout.Sess
           shipping: 0,
           tax: realTax,
           total: realTotal,
+          couponId: meta.couponId ?? null,
+          discount: meta.discount ?? 0,
           currency: session.currency ?? "usd",
           shippingAddressSnapshot: address ? addressToSnapshot(address) : {},
           items: {

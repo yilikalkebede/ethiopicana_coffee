@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
   if (parsed.data.couponCode) {
     let application;
     try {
-      application = await validateCoupon(parsed.data.couponCode, { subtotal, userId: user?.id ?? null });
+      application = await validateCoupon(parsed.data.couponCode, { subtotal, userId: user?.id ?? null, context: "one-time" });
     } catch (err) {
       if (err instanceof CouponInvalidError) {
         return NextResponse.json({ error: err.message }, { status: 400 });

@@ -77,6 +77,11 @@ export function SubscriptionBuilder({ userEmail, addresses }: { userEmail: strin
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [couponInput, setCouponInput] = useState("");
+  const [couponSubmitting, setCouponSubmitting] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+
   // Restore a draft saved before an auth redirect (see goToAuth below), so
   // signing in doesn't throw away six steps of answers.
   useEffect(() => {
@@ -115,6 +120,39 @@ export function SubscriptionBuilder({ userEmail, addresses }: { userEmail: strin
 
   function update<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
+    // The applied discount is a dollar amount validated against the price
+    // for the previous ounces — stale once the plan size changes.
+    if (key === "ounces") removeCoupon();
+  }
+
+  async function applyCoupon() {
+    if (!couponInput.trim()) return;
+    setCouponSubmitting(true);
+    setCouponError(null);
+    const res = await fetch("/api/subscriptions/coupon", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: couponInput.trim(), ounces: draft.ounces }),
+    });
+    setCouponSubmitting(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setCouponError(data.error ?? "Something went wrong.");
+      return;
+    }
+    const data = await res.json();
+    if (!data.valid) {
+      setCouponError(data.error ?? "That code isn't valid.");
+      return;
+    }
+    setAppliedCoupon({ code: couponInput.trim().toUpperCase(), discount: data.discount });
+  }
+
+  function removeCoupon() {
+    setAppliedCoupon(null);
+    setCouponInput("");
+    setCouponError(null);
   }
 
   function toggleFlavor(flavor: string) {
@@ -155,6 +193,9 @@ export function SubscriptionBuilder({ userEmail, addresses }: { userEmail: strin
       payload.shippingAddressId = selectedAddressId;
     } else {
       payload.shippingAddress = newAddress;
+    }
+    if (appliedCoupon) {
+      payload.couponCode = appliedCoupon.code;
     }
 
     const res = await fetch("/api/subscriptions", {
@@ -295,9 +336,69 @@ export function SubscriptionBuilder({ userEmail, addresses }: { userEmail: strin
                 </div>
                 <div>
                   <dt className="text-ink-soft">Price</dt>
-                  <dd className="text-ink">{preview ? formatPrice(preview.price) : "—"} / delivery</dd>
+                  <dd className="text-ink">
+                    {preview ? (
+                      appliedCoupon ? (
+                        <>
+                          <span className="text-ink-soft line-through">{formatPrice(preview.price)}</span>{" "}
+                          {formatPrice(Math.max(preview.price - appliedCoupon.discount, 0))}
+                        </>
+                      ) : (
+                        formatPrice(preview.price)
+                      )
+                    ) : (
+                      "—"
+                    )}{" "}
+                    / delivery
+                  </dd>
                 </div>
               </dl>
+              {appliedCoupon && (
+                <p className="mt-2 font-body text-xs text-ink-soft">
+                  Discount applies to your first shipment only — renewals bill at the full price.
+                </p>
+              )}
+            </div>
+
+            <div className="mt-6">
+              <h2 className="font-display text-lg text-ink">Discount code</h2>
+              {appliedCoupon ? (
+                <div className="mt-3 flex items-center justify-between border border-belt-500 px-4 py-3">
+                  <span className="font-body text-sm text-ink">
+                    <span className="font-mono">{appliedCoupon.code}</span> applied —{" "}
+                    {formatPrice(appliedCoupon.discount)} off
+                  </span>
+                  <button
+                    type="button"
+                    onClick={removeCoupon}
+                    className="font-mono text-[10px] uppercase tracking-tag text-ink-soft hover:text-rust"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-3 flex gap-3">
+                  <label htmlFor="subscription-coupon-code" className="sr-only">
+                    Discount code
+                  </label>
+                  <input
+                    id="subscription-coupon-code"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                    placeholder="Enter code"
+                    className="flex-1 border border-line bg-paper px-3 py-2 font-body text-sm uppercase text-ink focus-visible:outline-belt-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={applyCoupon}
+                    disabled={couponSubmitting || !couponInput.trim()}
+                    className="btn-secondary !px-5 !py-2 text-xs disabled:opacity-50"
+                  >
+                    {couponSubmitting ? "Checking…" : "Apply"}
+                  </button>
+                </div>
+              )}
+              {couponError && <p className="mt-2 font-body text-sm text-rust">{couponError}</p>}
             </div>
 
             {userEmail ? (
