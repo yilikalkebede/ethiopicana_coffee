@@ -393,6 +393,10 @@ model CartItem {
   productVariantId String
   productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
   quantity         Int
+  // Build Your Own Box (src/lib/box.ts) -- a box is one wholesale-editable
+  // unit: exactly 4 rows, quantity always 1 each. Never true for a row a
+  // shopper added normally.
+  isBoxItem        Boolean        @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -479,6 +483,13 @@ model Order {
   giftCard              GiftCard? @relation(fields: [giftCardId], references: [id])
   giftCardAmountApplied Decimal?  @db.Decimal(10, 2)
 
+  // Build Your Own Box (src/lib/box.ts) -- kept separate from `discount`
+  // (coupon-specific) and giftCardAmountApplied for the same reason those
+  // two are separate: independent, simultaneously-stackable discount
+  // sources need independent audit fields, not one field whose meaning
+  // shifts by context.
+  boxDiscount Decimal? @db.Decimal(10, 2)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -509,6 +520,11 @@ model OrderItem {
   unitPrice        Decimal         @db.Decimal(10, 2)
   discount         Decimal         @db.Decimal(10, 2) @default(0)
   total            Decimal         @db.Decimal(10, 2)
+  // Admin/fulfillment clarity that this shipped as part of a flat-priced
+  // Build Your Own Box, not an unrelated line item. Real individual price
+  // is still stored above -- the box discount is its own Order-level line,
+  // never a per-item rewrite.
+  isBoxItem        Boolean         @default(false)
 
   @@index([orderId])
 }

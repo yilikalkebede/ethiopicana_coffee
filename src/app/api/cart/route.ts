@@ -32,6 +32,16 @@ export async function POST(request: NextRequest) {
 
   const { cart, items } = await getCartWithTotals();
   const existing = items.find((i) => i.productVariantId === variant.id);
+
+  // A box item's quantity is fixed at 1 (see /api/box) -- it can't also
+  // represent "plus a personal add." Reject rather than silently inflating it.
+  if (existing?.isBoxItem) {
+    return NextResponse.json(
+      { error: "This coffee is already in your Build Your Own Box. Remove it from your box, or check out, before buying it separately." },
+      { status: 400 }
+    );
+  }
+
   const requestedTotal = (existing?.quantity ?? 0) + parsed.data.quantity;
 
   if (requestedTotal > availableStock(variant)) {

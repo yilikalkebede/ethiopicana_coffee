@@ -6,6 +6,7 @@ export type CartItemDTO = {
   id: string;
   quantity: number;
   productVariantId: string;
+  isBoxItem: boolean;
   productVariant: {
     id: string;
     name: string;

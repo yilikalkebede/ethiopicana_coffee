@@ -53,21 +53,47 @@ export async function OrderDetailView({ id }: { id: string }) {
 
       <div className="mt-8 border border-line p-6">
         <ul className="space-y-2 font-body text-sm text-ink-soft">
-          {order.items.map((item) => (
-            <li key={item.id} className="flex justify-between gap-3">
-              <span>
-                {item.productNameSnapshot}
-                {item.variantNameSnapshot ? ` — ${item.variantNameSnapshot}` : ""} × {item.quantity}
-              </span>
-              <span>{formatPrice(item.total)}</span>
+          {order.items.some((i) => i.isBoxItem) && (
+            <li>
+              <p className="font-mono text-[10px] uppercase tracking-tag text-belt-700">Build Your Own Box</p>
+              <ul className="mt-1 space-y-1 pl-3">
+                {order.items
+                  .filter((i) => i.isBoxItem)
+                  .map((item) => (
+                    <li key={item.id} className="flex justify-between gap-3">
+                      <span>
+                        {item.productNameSnapshot}
+                        {item.variantNameSnapshot ? ` — ${item.variantNameSnapshot}` : ""}
+                      </span>
+                      <span>{formatPrice(item.total)}</span>
+                    </li>
+                  ))}
+              </ul>
             </li>
-          ))}
+          )}
+          {order.items
+            .filter((i) => !i.isBoxItem)
+            .map((item) => (
+              <li key={item.id} className="flex justify-between gap-3">
+                <span>
+                  {item.productNameSnapshot}
+                  {item.variantNameSnapshot ? ` — ${item.variantNameSnapshot}` : ""} × {item.quantity}
+                </span>
+                <span>{formatPrice(item.total)}</span>
+              </li>
+            ))}
         </ul>
         <div className="mt-4 space-y-1 border-t border-line pt-4 font-body text-sm">
           <div className="flex justify-between text-ink-soft">
             <span>Subtotal</span>
             <span>{formatPrice(order.subtotal)}</span>
           </div>
+          {order.boxDiscount != null && Number(order.boxDiscount) > 0 && (
+            <div className="flex justify-between text-belt-700">
+              <span>Build Your Own Box discount</span>
+              <span>-{formatPrice(order.boxDiscount)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-ink-soft">
             <span>Shipping</span>
             <span>{Number(order.shipping) === 0 ? "Free" : formatPrice(order.shipping)}</span>

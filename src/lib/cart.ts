@@ -106,6 +106,13 @@ export async function mergeGuestCartIntoUser(userId: string): Promise<void> {
   });
 
   await prisma.$transaction(async (tx) => {
+    // A box is one wholesale unit (see src/lib/box.ts) -- merging two
+    // independently built boxes item-by-item is meaningless. The guest's
+    // box, if any, simply replaces whatever box the user cart already had.
+    if (guestCart.items.some((i) => i.isBoxItem)) {
+      await tx.cartItem.deleteMany({ where: { cartId: userCart.id, isBoxItem: true } });
+    }
+
     for (const item of guestCart.items) {
       const existing = await tx.cartItem.findUnique({
         where: {
@@ -113,13 +120,21 @@ export async function mergeGuestCartIntoUser(userId: string): Promise<void> {
         },
       });
       if (existing) {
+        // Same irreconcilable state /api/box rejects outright -- skip this
+        // line rather than corrupting either side's quantity/isBoxItem meaning.
+        if (existing.isBoxItem !== item.isBoxItem) continue;
         await tx.cartItem.update({
           where: { id: existing.id },
           data: { quantity: existing.quantity + item.quantity },
         });
       } else {
         await tx.cartItem.create({
-          data: { cartId: userCart.id, productVariantId: item.productVariantId, quantity: item.quantity },
+          data: {
+            cartId: userCart.id,
+            productVariantId: item.productVariantId,
+            quantity: item.quantity,
+            isBoxItem: item.isBoxItem,
+          },
         });
       }
     }

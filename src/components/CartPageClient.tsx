@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCart } from "@/components/CartProvider";
 import { CartLineItem } from "@/components/CartLineItem";
 import { CartSummary } from "@/components/CartSummary";
+import { BoxCartSection } from "@/components/BoxCartSection";
 
 export function CartPageClient({ freeShippingThreshold }: { freeShippingThreshold: number }) {
   const { items, subtotal, loading, updateQuantity, removeItem } = useCart();
@@ -25,9 +26,14 @@ export function CartPageClient({ freeShippingThreshold }: { freeShippingThreshol
       ) : (
         <div className="mt-10 grid grid-cols-1 gap-12 md:grid-cols-[1fr_320px]">
           <div>
-            {items.map((item) => (
-              <CartLineItem key={item.id} item={item} onUpdateQuantity={updateQuantity} onRemove={removeItem} />
-            ))}
+            {items.filter((i) => i.isBoxItem).length > 0 && (
+              <BoxCartSection items={items.filter((i) => i.isBoxItem)} onRemove={removeItem} />
+            )}
+            {items
+              .filter((i) => !i.isBoxItem)
+              .map((item) => (
+                <CartLineItem key={item.id} item={item} onUpdateQuantity={updateQuantity} onRemove={removeItem} />
+              ))}
           </div>
           <div>
             <CartSummary subtotal={subtotal} freeShippingThreshold={freeShippingThreshold} />

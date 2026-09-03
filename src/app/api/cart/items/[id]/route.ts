@@ -30,6 +30,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     return NextResponse.json({ error: "Cart item not found." }, { status: 404 });
   }
 
+  if (item.isBoxItem) {
+    return NextResponse.json(
+      { error: "Box items are fixed at one bag each. Edit your box on the Build Your Own Box page to change a coffee." },
+      { status: 400 }
+    );
+  }
+
   const available = availableStock(item.productVariant);
   if (parsed.data.quantity > available) {
     return NextResponse.json(
@@ -59,7 +66,13 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
     return NextResponse.json({ error: "Cart item not found." }, { status: 404 });
   }
 
-  await prisma.cartItem.delete({ where: { id: item.id } });
+  // A box is one editable unit -- removing any one of its 4 bags removes
+  // the whole box, rather than leaving a stray, invalid 3-item box behind.
+  if (item.isBoxItem) {
+    await prisma.cartItem.deleteMany({ where: { cartId: cart.id, isBoxItem: true } });
+  } else {
+    await prisma.cartItem.delete({ where: { id: item.id } });
+  }
   await prisma.cart.update({ where: { id: cart.id }, data: { abandonedEmailSentAt: null } });
 
   const updated = await getCartWithTotals();

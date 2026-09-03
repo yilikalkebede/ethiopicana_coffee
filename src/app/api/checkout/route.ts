@@ -13,6 +13,7 @@ import { getSettings } from "@/lib/settings";
 import { getRates, snapshotToShipTo } from "@/lib/shipping";
 import { validateCoupon, CouponInvalidError } from "@/lib/coupons";
 import { validateGiftCard, redeemGiftCard, GiftCardInvalidError } from "@/lib/giftCards";
+import { validateBoxSelection, BoxInvalidError, BOX_ITEM_COUNT } from "@/lib/box";
 import type { Address } from "@prisma/client";
 
 const checkoutSchema = z
@@ -88,10 +89,26 @@ export async function POST(request: NextRequest) {
   for (const item of items) {
     if (!item.productVariant.active || !item.productVariant.product.active) {
       return NextResponse.json(
-        { error: `${item.productVariant.product.name} is no longer available. Please update your cart.` },
+        {
+          error: item.isBoxItem
+            ? `${item.productVariant.product.name} is no longer available. Please rebuild your box.`
+            : `${item.productVariant.product.name} is no longer available. Please update your cart.`,
+          ...(item.isBoxItem && { boxInvalid: true }),
+        },
         { status: 400 }
       );
     }
+  }
+
+  // A broken box count is cart integrity corruption (same tier as the
+  // active-item check above), not an optional discount input -- checked
+  // before anything else touches the cart.
+  const boxItems = items.filter((item) => item.isBoxItem);
+  if (boxItems.length > 0 && boxItems.length !== BOX_ITEM_COUNT) {
+    return NextResponse.json(
+      { error: "Your Build Your Own Box selection is incomplete. Please rebuild your box before checking out.", boxInvalid: true },
+      { status: 400 }
+    );
   }
 
   const user = await getCurrentUser();
@@ -180,6 +197,26 @@ export async function POST(request: NextRequest) {
     console.error("Shippo rate lookup failed at checkout, falling back to flat rate:", err);
   }
 
+  // Build Your Own Box — re-validated from scratch against the cart's real
+  // isBoxItem rows, never trusted from whatever POST /api/box last
+  // accepted: a chosen coffee could have gone inactive, sold out, or left
+  // Single Origin since. Folded in BEFORE the coupon/gift-card blocks below
+  // since it's a structural price adjustment on what's actually in the
+  // cart, not an optional promo code layered on top of it.
+  let boxDiscount = 0;
+  if (boxItems.length > 0) {
+    try {
+      const boxValidation = await validateBoxSelection(boxItems.map((item) => ({ productVariantId: item.productVariantId })));
+      boxDiscount = boxValidation.boxDiscount;
+    } catch (err) {
+      if (err instanceof BoxInvalidError) {
+        return NextResponse.json({ error: err.message, boxInvalid: true }, { status: 400 });
+      }
+      throw err;
+    }
+    totals = { ...totals, total: Math.max(totals.total - boxDiscount, 0) };
+  }
+
   // Coupon — re-validated from scratch against the real subtotal, never
   // trusted from the client's earlier preview. Applied after the real
   // shipping rate is known, since FREE_SHIPPING needs to zero out whatever
@@ -199,7 +236,7 @@ export async function POST(request: NextRequest) {
     couponId = application.coupon.id;
     discount = application.freeShipping ? 0 : application.discount;
     const shipping = application.freeShipping ? 0 : totals.shipping;
-    const total = Math.max(subtotal - discount + shipping + totals.tax, 0);
+    const total = Math.max(subtotal - boxDiscount - discount + shipping + totals.tax, 0);
     totals = { subtotal, shipping, tax: totals.tax, total };
   }
 
@@ -211,7 +248,7 @@ export async function POST(request: NextRequest) {
   let giftCardId: string | null = null;
   let giftCardAmountApplied = 0;
   if (parsed.data.giftCardCode) {
-    const amountRemainingToCover = Math.max(totals.subtotal - discount + totals.shipping + totals.tax, 0);
+    const amountRemainingToCover = Math.max(totals.subtotal - boxDiscount - discount + totals.shipping + totals.tax, 0);
     let application;
     try {
       application = await validateGiftCard(parsed.data.giftCardCode, { amountRemainingToCover });
@@ -223,7 +260,7 @@ export async function POST(request: NextRequest) {
     }
     giftCardId = application.giftCard.id;
     giftCardAmountApplied = application.amountAvailable;
-    const total = Math.max(totals.subtotal - discount - giftCardAmountApplied + totals.shipping + totals.tax, 0);
+    const total = Math.max(totals.subtotal - boxDiscount - discount - giftCardAmountApplied + totals.shipping + totals.tax, 0);
     totals = { ...totals, total };
   }
 
@@ -247,6 +284,7 @@ export async function POST(request: NextRequest) {
             fulfillmentStatus: "UNFULFILLED",
             subtotal: totals.subtotal,
             discount,
+            boxDiscount: boxDiscount > 0 ? boxDiscount : null,
             shipping: totals.shipping,
             tax: totals.tax,
             total: totals.total,
@@ -267,6 +305,7 @@ export async function POST(request: NextRequest) {
                 quantity: item.quantity,
                 unitPrice: item.productVariant.price,
                 total: Number(item.productVariant.price) * item.quantity,
+                isBoxItem: item.isBoxItem,
               })),
             },
           },
@@ -350,7 +389,7 @@ export async function POST(request: NextRequest) {
     // discount and gift card amount are combined into this single
     // Stripe-side coupon — Stripe never separately "sees" the gift card,
     // it just charges the smaller total.
-    const totalDiscountForStripe = discount + giftCardAmountApplied;
+    const totalDiscountForStripe = boxDiscount + discount + giftCardAmountApplied;
     let stripeDiscountId: string | undefined;
     if (totalDiscountForStripe > 0) {
       const stripeCoupon = await stripe.coupons.create({

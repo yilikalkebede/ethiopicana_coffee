@@ -70,6 +70,11 @@ test.describe("accessibility (serious/critical WCAG 2 A/AA violations)", () => {
     await scan(page);
   });
 
+  test("build a box", async ({ page }) => {
+    await page.goto("/build-a-box");
+    await scan(page);
+  });
+
   test("account (logged in)", async ({ page }) => {
     await login(page, SEEDED_USERS.customer.email, SEEDED_USERS.customer.password);
     await page.goto("/account");

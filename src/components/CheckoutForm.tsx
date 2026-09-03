@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useCart } from "@/components/CartProvider";
 import { AddressFields, EMPTY_ADDRESS, type AddressInput } from "@/components/AddressFields";
 import { formatPrice } from "@/lib/format";
+import { BOX_ITEM_COUNT, BOX_PRICE } from "@/lib/box";
 
 type SavedAddress = AddressInput & { id: string; isDefaultShipping: boolean };
 
@@ -36,6 +38,7 @@ export function CheckoutForm({
   const [billingAddress, setBillingAddress] = useState<AddressInput>(EMPTY_ADDRESS);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [boxInvalid, setBoxInvalid] = useState(false);
   // Once Stripe redirect starts, stop redirecting back to /cart just
   // because the (about-to-be-cleared) cart briefly looks unchanged.
   const [redirecting, setRedirecting] = useState(false);
@@ -134,14 +137,21 @@ export function CheckoutForm({
           ? (rates.find((r) => r.carrier === selectedRate.carrier && r.service === selectedRate.service)?.rate ?? null)
           : null;
 
+  const boxItems = items.filter((i) => i.isBoxItem);
+  const boxDiscount =
+    boxItems.length === BOX_ITEM_COUNT
+      ? Math.max(boxItems.reduce((sum, i) => sum + Number(i.productVariant.price), 0) - BOX_PRICE, 0)
+      : 0;
+
   const discount = appliedCoupon?.freeShipping ? 0 : (appliedCoupon?.discount ?? 0);
   // Mirrors the server's own min(remainingBalance, amountRemainingToCover) —
   // an estimate only; the authoritative amount is recomputed at order
   // creation (src/app/api/checkout/route.ts).
   const giftCardApplied = appliedGiftCard
-    ? Math.min(appliedGiftCard.remainingBalance, Math.max(subtotal - discount + (shippingCost ?? 0), 0))
+    ? Math.min(appliedGiftCard.remainingBalance, Math.max(subtotal - boxDiscount - discount + (shippingCost ?? 0), 0))
     : 0;
-  const estimatedTotal = shippingCost === null ? null : Math.max(subtotal - discount - giftCardApplied + shippingCost, 0);
+  const estimatedTotal =
+    shippingCost === null ? null : Math.max(subtotal - boxDiscount - discount - giftCardApplied + shippingCost, 0);
   const canSubmit = !ratesLoading && shippingCost !== null && items.length > 0;
 
   async function applyCoupon() {
@@ -209,6 +219,7 @@ export function CheckoutForm({
     e.preventDefault();
     setSubmitting(true);
     setError(null);
+    setBoxInvalid(false);
 
     const payload: Record<string, unknown> = {
       email,
@@ -242,6 +253,7 @@ export function CheckoutForm({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Something went wrong. Please try again.");
+      setBoxInvalid(Boolean(data.boxInvalid));
       setSubmitting(false);
       return;
     }
@@ -494,6 +506,14 @@ export function CheckoutForm({
         {error && (
           <p role="alert" className="font-body text-sm text-rust">
             {error}
+            {boxInvalid && (
+              <>
+                {" "}
+                <Link href="/build-a-box" className="underline underline-offset-2">
+                  Update your box
+                </Link>
+              </>
+            )}
           </p>
         )}
 
@@ -523,6 +543,14 @@ export function CheckoutForm({
             <span>Subtotal ({itemCount} items)</span>
             <span>{formatPrice(subtotal)}</span>
           </div>
+          {boxDiscount > 0 && (
+            <div className="flex justify-between text-belt-700">
+              <span>
+                Build Your Own Box ({BOX_ITEM_COUNT} bags, {formatPrice(BOX_PRICE)})
+              </span>
+              <span>-{formatPrice(boxDiscount)}</span>
+            </div>
+          )}
           {discount > 0 && (
             <div className="flex justify-between text-belt-700">
               <span>Discount ({appliedCoupon?.code})</span>
