@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { BOX_ITEM_COUNT, BOX_PRICE } from "@/lib/box";
 import { FilterPanel } from "@/components/FilterPanel";
 import { ProductGrid } from "@/components/ProductGrid";
 import { Pagination } from "@/components/Pagination";
@@ -111,6 +113,20 @@ export default async function ShopPage({
       <p className="mt-3 max-w-2xl font-body text-sm text-ink-soft">
         {total} {total === 1 ? "coffee" : "coffees"}, every one sourced from a named Ethiopian region.
       </p>
+
+      <Link
+        href="/build-a-box"
+        className="mt-8 flex flex-wrap items-center justify-between gap-4 border border-belt-500 bg-belt-50 px-6 py-5 hover:bg-belt-100"
+      >
+        <div>
+          <span className="specimen-tag">Build Your Own Box</span>
+          <p className="mt-2 font-body text-sm text-ink">
+            Pick any {BOX_ITEM_COUNT} single-origin bags for a flat {"$"}
+            {BOX_PRICE}.
+          </p>
+        </div>
+        <span className="btn-secondary shrink-0 !px-5 !py-2 text-xs">Start building →</span>
+      </Link>
 
       <div className="mt-8">
         <FilterPanel categories={categories} regions={regions} roasts={roasts} flavors={flavors} searchParams={searchParams} />
