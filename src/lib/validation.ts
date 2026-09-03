@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { SUBSCRIPTION_OUNCE_OPTIONS } from "@/lib/subscriptionPricing";
+import { SUBSCRIPTION_OUNCE_OPTIONS, SUBSCRIPTION_FREQUENCIES } from "@/lib/subscriptionPricing";
+import { GIFT_CARD_MIN_AMOUNT, GIFT_CARD_MAX_AMOUNT } from "@/lib/giftCards";
 
 export const addressSchema = z.object({
   firstName: z.string().min(1),
@@ -68,9 +69,22 @@ export const giftPurchaseSchema = z.object({
   recipientEmail: z.string().email(),
   giftMessage: z.string().optional(),
   deliveryDate: z.coerce.date(),
-  durationMonths: z.number().int().refine((v) => [3, 6, 12].includes(v)),
+  shipments: z.number().int().refine((v) => [3, 6, 12].includes(v)),
+  frequency: z.enum(SUBSCRIPTION_FREQUENCIES),
   renewable: z.boolean().default(false),
   ounces: z.number().int().refine((v) => (SUBSCRIPTION_OUNCE_OPTIONS as readonly number[]).includes(v)),
+});
+
+// A gift card is redeemable by whoever has the code, no account required —
+// senderEmail is collected directly (not read from a session) since
+// purchase is allowed as a guest, same as ordinary checkout.
+export const giftCardPurchaseSchema = z.object({
+  amount: z.number().min(GIFT_CARD_MIN_AMOUNT).max(GIFT_CARD_MAX_AMOUNT),
+  senderName: z.string().min(1),
+  senderEmail: z.string().email(),
+  recipientName: z.string().optional(),
+  recipientEmail: z.string().email(),
+  giftMessage: z.string().max(500).optional(),
 });
 
 export const giftClaimSchema = z.object({

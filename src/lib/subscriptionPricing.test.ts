@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { computeSubscriptionPrice, computeBagUnits, frequencyToDays } from "@/lib/subscriptionPricing";
+import {
+  computeSubscriptionPrice,
+  computeBagUnits,
+  frequencyToDays,
+  computeGiftPrice,
+  computeGiftDiscountMonths,
+} from "@/lib/subscriptionPricing";
 
 describe("computeSubscriptionPrice", () => {
   it("prices a standard 12oz bag at the base price", () => {
@@ -38,5 +44,37 @@ describe("frequencyToDays", () => {
     expect(frequencyToDays("EVERY_4_WEEKS")).toBe(28);
     expect(frequencyToDays("EVERY_6_WEEKS")).toBe(42);
     expect(frequencyToDays("EVERY_8_WEEKS")).toBe(56);
+  });
+});
+
+describe("computeGiftPrice", () => {
+  it("multiplies the per-shipment price by the shipment count", () => {
+    expect(computeGiftPrice(12, 3)).toBe(54); // $18/shipment x 3
+    expect(computeGiftPrice(24, 6)).toBe(216); // $36/shipment x 6
+  });
+});
+
+describe("computeGiftDiscountMonths", () => {
+  it("never returns fewer than 1 month even for a single shipment", () => {
+    expect(computeGiftDiscountMonths(1, "EVERY_2_WEEKS")).toBe(1);
+    expect(computeGiftDiscountMonths(1, "EVERY_8_WEEKS")).toBe(1);
+  });
+
+  it("covers a slow cadence's shipments even though it exceeds the naive month count", () => {
+    // 3 shipments every 8 weeks span 112 days (shipments land at day 0, 56,
+    // 112) -- that needs a full 4-month window, not 3, since Stripe coupons
+    // only understand whole calendar months.
+    expect(computeGiftDiscountMonths(3, "EVERY_8_WEEKS")).toBe(4);
+  });
+
+  it("never shorts the purchaser's paid-for shipments at any cadence", () => {
+    // 6 shipments every 2 weeks span 70 days (shipments at 0,14,...,70) --
+    // needs at least 3 months (90 days); 2 months (60 days) would cut off
+    // the 6th shipment.
+    expect(computeGiftDiscountMonths(6, "EVERY_2_WEEKS")).toBe(3);
+  });
+
+  it("scales sensibly for a large shipment count", () => {
+    expect(computeGiftDiscountMonths(12, "EVERY_4_WEEKS")).toBe(11);
   });
 });

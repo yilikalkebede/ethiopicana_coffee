@@ -58,6 +58,7 @@ model User {
   rewardTransactions RewardTransaction[]
   rewardBalance      RewardBalance?
   giftsPurchased     GiftSubscription[]      @relation("GiftPurchaser")
+  giftCardsPurchased GiftCard[]              @relation("GiftCardPurchaser")
   auditLogs          AuditLog[]
   inventoryTx        InventoryTransaction[]
   sessions           Session[]
@@ -474,13 +475,18 @@ model Order {
   couponId String?
   coupon   Coupon? @relation(fields: [couponId], references: [id])
 
+  giftCardId            String?
+  giftCard              GiftCard? @relation(fields: [giftCardId], references: [id])
+  giftCardAmountApplied Decimal?  @db.Decimal(10, 2)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  items     OrderItem[]
-  payments  Payment[]
-  shipments Shipment[]
-  refunds   Refund[]
+  items                OrderItem[]
+  payments             Payment[]
+  shipments            Shipment[]
+  refunds              Refund[]
+  giftCardTransactions GiftCardTransaction[]
 
   @@index([orderNumber])
   @@index([userId])
@@ -737,6 +743,15 @@ model GiftSubscription {
   recipientName  String?
   giftMessage    String?
   deliveryDate   DateTime
+  // The real purchased quantity — what the purchaser actually paid for
+  // (computeGiftPrice(ounces, shipments), src/lib/subscriptionPricing.ts).
+  // frequency lets the giver choose cadence (was hardcoded EVERY_4_WEEKS).
+  // durationMonths is NOT chosen by the purchaser — it's the Stripe
+  // repeating-coupon window computed from shipments+frequency at
+  // fulfillment time (computeGiftDiscountMonths), since Stripe coupons only
+  // support "N calendar months," not "N billing cycles."
+  shipments      Int                     @default(3)
+  frequency      SubscriptionFrequency   @default(EVERY_4_WEEKS)
   durationMonths Int
   // What was actually paid for — needed at claim time to know what plan
   // the recipient is entitled to (nothing else survives the gap between
@@ -761,6 +776,73 @@ model GiftSubscription {
 
   @@index([claimToken])
   @@index([recipientEmail])
+}
+
+// ---------------------------------------------------------------------------
+// GIFT CARDS (real stored-value balance — distinct from GiftSubscription
+// above, which gifts a subscription via a claim-token/account flow. A gift
+// card is redeemable by whoever holds the code, no account required.)
+// ---------------------------------------------------------------------------
+
+enum GiftCardTransactionType {
+  ISSUE      // created on purchase, amount = full face value
+  REDEMPTION // consumed at checkout, amount is negative
+  ADJUSTMENT // reserved for a future manual admin balance correction, unused in v1
+}
+
+model GiftCard {
+  id               String  @id @default(cuid())
+  code             String  @unique
+  initialBalance   Decimal @db.Decimal(10, 2)
+  remainingBalance Decimal @db.Decimal(10, 2)
+  currency         String  @default("usd")
+
+  purchaserId    String?
+  purchaser      User?   @relation("GiftCardPurchaser", fields: [purchaserId], references: [id])
+  // Set even for guest purchases (purchaserId is null then) so admin
+  // search/support always has a contact email to work with.
+  purchaserEmail String
+  senderName     String
+  recipientEmail String
+  recipientName  String?
+  giftMessage    String?
+
+  // Admin kill switch for fraud/support (mirrors Coupon.active) — combined
+  // with remainingBalance > 0, this is the complete state; no separate
+  // status enum needed.
+  active                Boolean @default(true)
+  stripePaymentIntentId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions GiftCardTransaction[]
+  orders       Order[]
+
+  @@index([code])
+  @@index([recipientEmail])
+  @@index([purchaserId])
+}
+
+model GiftCardTransaction {
+  id         String                  @id @default(cuid())
+  giftCardId String
+  giftCard   GiftCard                @relation(fields: [giftCardId], references: [id])
+  type       GiftCardTransactionType
+  amount     Decimal                 @db.Decimal(10, 2)
+  orderId    String? // null for the initial ISSUE transaction
+  // SetNull, not Cascade: if an order is deleted after a gift card was
+  // already redeemed against it (the checkout route's failure-cleanup path
+  // deletes orphaned PENDING orders when Stripe session creation fails —
+  // see src/app/api/checkout/route.ts), the balance debit already happened
+  // and is a real ledger fact that must survive the order's deletion, not
+  // vanish with it.
+  order      Order?                  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  reason     String
+  createdAt  DateTime                @default(now())
+
+  @@index([giftCardId])
+  @@index([orderId])
 }
 
 // ---------------------------------------------------------------------------

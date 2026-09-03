@@ -2,24 +2,25 @@
 
 import { useState } from "react";
 import { formatPrice } from "@/lib/format";
-import { computeSubscriptionPrice } from "@/lib/subscriptionPricing";
+import { computeSubscriptionPrice, computeGiftPrice, SUBSCRIPTION_FREQUENCIES, FREQUENCY_LABEL } from "@/lib/subscriptionPricing";
 
 const OUNCE_OPTIONS = [6, 12, 24, 36, 48];
-const DURATIONS = [3, 6, 12];
+const SHIPMENT_OPTIONS = [3, 6, 12];
 
 export function GiftPurchaseForm() {
   const [recipientName, setRecipientName] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [giftMessage, setGiftMessage] = useState("");
   const [deliveryDate, setDeliveryDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [durationMonths, setDurationMonths] = useState(3);
+  const [shipments, setShipments] = useState(3);
+  const [frequency, setFrequency] = useState<(typeof SUBSCRIPTION_FREQUENCIES)[number]>("EVERY_4_WEEKS");
   const [ounces, setOunces] = useState(12);
   const [renewable, setRenewable] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const monthlyPrice = computeSubscriptionPrice(ounces);
-  const total = Math.round(monthlyPrice * durationMonths * 100) / 100;
+  const perShipmentPrice = computeSubscriptionPrice(ounces);
+  const total = computeGiftPrice(ounces, shipments);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,7 +35,8 @@ export function GiftPurchaseForm() {
         recipientEmail,
         giftMessage: giftMessage || undefined,
         deliveryDate: new Date(deliveryDate).toISOString(),
-        durationMonths,
+        shipments,
+        frequency,
         renewable,
         ounces,
       }),
@@ -98,10 +100,18 @@ export function GiftPurchaseForm() {
               </select>
             </div>
             <div>
-              <label className={labelClass} htmlFor="durationMonths">Duration</label>
-              <select id="durationMonths" value={durationMonths} onChange={(e) => setDurationMonths(Number(e.target.value))} className={inputClass}>
-                {DURATIONS.map((m) => (
-                  <option key={m} value={m}>{m} months</option>
+              <label className={labelClass} htmlFor="frequency">Ships</label>
+              <select id="frequency" value={frequency} onChange={(e) => setFrequency(e.target.value as typeof frequency)} className={inputClass}>
+                {SUBSCRIPTION_FREQUENCIES.map((f) => (
+                  <option key={f} value={f}>{FREQUENCY_LABEL[f]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="shipments">Number of shipments</label>
+              <select id="shipments" value={shipments} onChange={(e) => setShipments(Number(e.target.value))} className={inputClass}>
+                {SHIPMENT_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{s} shipments</option>
                 ))}
               </select>
             </div>
@@ -111,7 +121,7 @@ export function GiftPurchaseForm() {
             Continue billing the recipient automatically after the gift ends
           </label>
           <p className="mt-3 font-body text-sm text-ink-soft">
-            The recipient picks their own roast, brew method, and grind when they claim it — every 4 weeks, {ounces}oz per shipment.
+            The recipient picks their own roast, brew method, and grind when they claim it — {FREQUENCY_LABEL[frequency].toLowerCase()}, {ounces}oz per shipment.
           </p>
         </div>
 
@@ -130,12 +140,12 @@ export function GiftPurchaseForm() {
         <h2 className="font-display text-lg text-ink">Summary</h2>
         <div className="space-y-1 font-body text-sm text-ink-soft">
           <div className="flex justify-between">
-            <span>{ounces}oz every 4 weeks</span>
-            <span>{formatPrice(monthlyPrice)}/shipment</span>
+            <span>{ounces}oz {FREQUENCY_LABEL[frequency].toLowerCase()}</span>
+            <span>{formatPrice(perShipmentPrice)}/shipment</span>
           </div>
           <div className="flex justify-between">
-            <span>Duration</span>
-            <span>{durationMonths} months</span>
+            <span>Shipments</span>
+            <span>{shipments}</span>
           </div>
           <div className="flex justify-between border-t border-line pt-2 font-medium text-ink">
             <span>Total charged today</span>

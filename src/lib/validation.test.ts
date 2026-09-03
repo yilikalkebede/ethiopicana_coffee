@@ -34,7 +34,8 @@ describe("giftPurchaseSchema", () => {
   const valid = {
     recipientEmail: "friend@example.com",
     deliveryDate: "2026-12-01",
-    durationMonths: 3,
+    shipments: 3,
+    frequency: "EVERY_4_WEEKS",
     ounces: 12,
   };
 
@@ -42,13 +43,23 @@ describe("giftPurchaseSchema", () => {
     expect(() => giftPurchaseSchema.parse(valid)).not.toThrow();
   });
 
-  it("rejects a durationMonths value outside the allowed set", () => {
-    expect(() => giftPurchaseSchema.parse({ ...valid, durationMonths: 4 })).toThrow();
+  it("rejects a shipments value outside the allowed set", () => {
+    expect(() => giftPurchaseSchema.parse({ ...valid, shipments: 4 })).toThrow();
   });
 
-  it("accepts every allowed durationMonths value", () => {
-    for (const months of [3, 6, 12]) {
-      expect(() => giftPurchaseSchema.parse({ ...valid, durationMonths: months })).not.toThrow();
+  it("accepts every allowed shipments value", () => {
+    for (const shipments of [3, 6, 12]) {
+      expect(() => giftPurchaseSchema.parse({ ...valid, shipments })).not.toThrow();
+    }
+  });
+
+  it("rejects an invalid frequency value", () => {
+    expect(() => giftPurchaseSchema.parse({ ...valid, frequency: "EVERY_3_WEEKS" })).toThrow();
+  });
+
+  it("accepts every real frequency value", () => {
+    for (const frequency of ["EVERY_2_WEEKS", "EVERY_4_WEEKS", "EVERY_6_WEEKS", "EVERY_8_WEEKS"]) {
+      expect(() => giftPurchaseSchema.parse({ ...valid, frequency })).not.toThrow();
     }
   });
 

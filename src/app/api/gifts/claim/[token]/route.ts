@@ -5,11 +5,6 @@ import { stripe, STRIPE_TAX_ENABLED } from "@/lib/stripe";
 import { giftClaimSchema } from "@/lib/validation";
 import { computeSubscriptionPrice, STRIPE_RECURRING_INTERVAL, FREQUENCY_LABEL } from "@/lib/subscriptionPricing";
 
-/** Every gift ships every 4 weeks — the recipient only picks taste
- * (brew/roast/flavor/grind), not commercial terms (those are fixed by
- * what the purchaser already paid for). */
-const GIFT_FREQUENCY = "EVERY_4_WEEKS" as const;
-
 /**
  * Claiming creates a real Stripe Subscription for the recipient with a
  * 100%-off Stripe discount for the gifted duration — a real, standard
@@ -65,7 +60,7 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
     });
 
     const price = computeSubscriptionPrice(gift.ounces);
-    const { interval, interval_count } = STRIPE_RECURRING_INTERVAL[GIFT_FREQUENCY];
+    const { interval, interval_count } = STRIPE_RECURRING_INTERVAL[gift.frequency];
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
     const metadata: Record<string, string> = {
@@ -76,7 +71,7 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
       grindPreference: data.grindPreference,
       flavorPreference: JSON.stringify(data.flavorPreference),
       ounces: String(gift.ounces),
-      frequency: GIFT_FREQUENCY,
+      frequency: gift.frequency,
       giftSubscriptionId: gift.id,
     };
 
@@ -87,7 +82,7 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
         {
           price_data: {
             currency: "usd",
-            product_data: { name: `Coffee Subscription (Gift) — ${gift.ounces}oz, ${FREQUENCY_LABEL[GIFT_FREQUENCY]}` },
+            product_data: { name: `Coffee Subscription (Gift) — ${gift.ounces}oz, ${FREQUENCY_LABEL[gift.frequency]}` },
             unit_amount: Math.round(price * 100),
             recurring: { interval, interval_count },
           },

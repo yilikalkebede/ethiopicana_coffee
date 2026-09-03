@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AddressFields, EMPTY_ADDRESS, type AddressInput } from "@/components/AddressFields";
 import { formatPrice } from "@/lib/format";
-import { FREQUENCY_LABEL } from "@/lib/subscriptionPricing";
+import { FREQUENCY_LABEL, SUBSCRIPTION_FREQUENCIES } from "@/lib/subscriptionPricing";
 
 const DRAFT_KEY = "ethiopicana_subscription_draft";
 const TOTAL_STEPS = 7;
@@ -32,7 +32,7 @@ const FLAVORS = ["chocolatey", "nutty", "fruity", "floral", "caramel", "bright",
 
 const OUNCE_OPTIONS = [6, 12, 24, 36, 48];
 
-const FREQUENCIES = ["EVERY_2_WEEKS", "EVERY_4_WEEKS", "EVERY_6_WEEKS", "EVERY_8_WEEKS"] as const;
+const FREQUENCIES = SUBSCRIPTION_FREQUENCIES;
 type Frequency = (typeof FREQUENCIES)[number];
 
 type SavedAddress = AddressInput & { id: string; isDefaultShipping: boolean };

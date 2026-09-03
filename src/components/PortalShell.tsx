@@ -11,6 +11,7 @@ type NavKey =
   | "monthly-coffee"
   | "journal"
   | "coupons"
+  | "gift-cards"
   | "reviews"
   | "reward-tiers"
   | "users"
@@ -41,6 +42,7 @@ export function PortalShell({
     { key: "monthly-coffee", label: "Coffee of the Month", href: `${basePath}/monthly-coffee` },
     { key: "journal", label: "Journal", href: `${basePath}/journal` },
     { key: "coupons", label: "Coupons", href: `${basePath}/coupons` },
+    { key: "gift-cards", label: "Gift Cards", href: `${basePath}/gift-cards` },
     { key: "reviews", label: "Reviews", href: `${basePath}/reviews` },
     { key: "reward-tiers", label: "Reward Tiers", href: `${basePath}/reward-tiers` },
   ];

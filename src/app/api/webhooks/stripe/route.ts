@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import type Stripe from "stripe";
-import type { Prisma, GiftSubscription } from "@prisma/client";
+import type { Prisma, GiftSubscription, SubscriptionFrequency } from "@prisma/client";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { matchCoffee, pickVariant } from "@/lib/personalization";
-import { computeBagUnits } from "@/lib/subscriptionPricing";
+import { computeBagUnits, computeGiftDiscountMonths } from "@/lib/subscriptionPricing";
 import { generateOrderNumber } from "@/lib/orderNumber";
 import { releaseReservation } from "@/lib/inventory";
 import { awardPoints } from "@/lib/rewards";
 import { sendEmail } from "@/lib/email";
-import { orderConfirmationEmail, giftClaimEmail } from "@/lib/emailTemplates";
+import { orderConfirmationEmail, giftClaimEmail, giftCardDeliveredEmail } from "@/lib/emailTemplates";
 import { formatPrice } from "@/lib/format";
+import { generateGiftCardCode } from "@/lib/giftCards";
 
 /**
  * Source of truth for "did this order/subscription actually get paid,
@@ -44,6 +45,8 @@ export async function POST(request: NextRequest) {
         await handleSubscriptionCheckoutCompleted(session);
       } else if (session.metadata?.kind === "gift") {
         await handleGiftCheckoutCompleted(session);
+      } else if (session.metadata?.kind === "giftcard") {
+        await handleGiftCardCheckoutCompleted(session);
       } else {
         await handleCheckoutSessionCompleted(session);
       }
@@ -230,12 +233,14 @@ async function handleGiftCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   const meta = session.metadata;
-  if (!meta?.purchaserId || !meta.recipientEmail || !meta.deliveryDate || !meta.durationMonths || !meta.ounces) {
+  if (!meta?.purchaserId || !meta.recipientEmail || !meta.deliveryDate || !meta.shipments || !meta.frequency || !meta.ounces) {
     console.error("gift checkout.session.completed missing/invalid metadata", session.id);
     return;
   }
 
   const claimToken = randomBytes(24).toString("hex");
+  const shipments = Number(meta.shipments);
+  const frequency = meta.frequency as SubscriptionFrequency;
 
   await prisma.giftSubscription.create({
     data: {
@@ -244,7 +249,10 @@ async function handleGiftCheckoutCompleted(session: Stripe.Checkout.Session) {
       recipientName: meta.recipientName || null,
       giftMessage: meta.giftMessage || null,
       deliveryDate: new Date(meta.deliveryDate),
-      durationMonths: Number(meta.durationMonths),
+      shipments,
+      frequency,
+      // Derived, not chosen by the purchaser — see computeGiftDiscountMonths.
+      durationMonths: computeGiftDiscountMonths(shipments, frequency),
       ounces: Number(meta.ounces),
       renewable: meta.renewable === "true",
       status: "SENT",
@@ -265,6 +273,70 @@ async function handleGiftCheckoutCompleted(session: Stripe.Checkout.Session) {
     `${appUrl}/gifts/claim/${claimToken}`
   );
   await sendEmail({ to: meta.recipientEmail, subject, html });
+}
+
+// ---------------------------------------------------------------------------
+// Gift Cards
+// ---------------------------------------------------------------------------
+
+/**
+ * A gift card purchase is a real one-time payment (mode: "payment",
+ * metadata.kind "giftcard"). Unlike a gift subscription, there's no claim
+ * step — the GiftCard row created here IS the redeemable thing, usable by
+ * anyone with the code at checkout (src/app/api/checkout/route.ts).
+ */
+async function handleGiftCardCheckoutCompleted(session: Stripe.Checkout.Session) {
+  const paymentIntentId =
+    typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+
+  if (paymentIntentId) {
+    const existing = await prisma.giftCard.findUnique({ where: { stripePaymentIntentId: paymentIntentId } });
+    if (existing) return; // already processed by an earlier delivery
+  }
+
+  const meta = session.metadata;
+  if (!meta?.senderEmail || !meta.recipientEmail || !meta.amount) {
+    console.error("giftcard checkout.session.completed missing/invalid metadata", session.id);
+    return;
+  }
+
+  // The real charged amount, not the pre-tax/pre-adjustment metadata value.
+  const amount = (session.amount_total ?? 0) / 100;
+  const code = generateGiftCardCode();
+
+  const giftCard = await prisma.$transaction(async (tx) => {
+    const created = await tx.giftCard.create({
+      data: {
+        code,
+        initialBalance: amount,
+        remainingBalance: amount,
+        purchaserId: meta.purchaserId || null,
+        purchaserEmail: meta.senderEmail,
+        senderName: meta.senderName || "Someone",
+        recipientEmail: meta.recipientEmail,
+        recipientName: meta.recipientName || null,
+        giftMessage: meta.giftMessage || null,
+        stripePaymentIntentId: paymentIntentId,
+      },
+    });
+
+    await tx.giftCardTransaction.create({
+      data: { giftCardId: created.id, type: "ISSUE", amount, reason: "Gift card purchased" },
+    });
+
+    return created;
+  });
+
+  // No separate purchaser receipt email — Stripe's own payment receipt
+  // covers that, same as the gift-subscription flow above.
+  const { subject, html } = giftCardDeliveredEmail(
+    giftCard.recipientName || "",
+    giftCard.senderName,
+    formatPrice(amount),
+    giftCard.code,
+    giftCard.giftMessage
+  );
+  await sendEmail({ to: giftCard.recipientEmail, subject, html });
 }
 
 // ---------------------------------------------------------------------------

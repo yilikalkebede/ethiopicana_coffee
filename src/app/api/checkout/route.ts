@@ -12,6 +12,7 @@ import { reserveStock, releaseReservation, InsufficientStockError } from "@/lib/
 import { getSettings } from "@/lib/settings";
 import { getRates, snapshotToShipTo } from "@/lib/shipping";
 import { validateCoupon, CouponInvalidError } from "@/lib/coupons";
+import { validateGiftCard, redeemGiftCard, GiftCardInvalidError } from "@/lib/giftCards";
 import type { Address } from "@prisma/client";
 
 const checkoutSchema = z
@@ -30,6 +31,11 @@ const checkoutSchema = z
     // here (src/lib/coupons.ts), never trusted from the client's own
     // preview at /api/checkout/coupon.
     couponCode: z.string().optional(),
+    // A separate, independent code from the coupon above — re-validated
+    // from scratch here too (src/lib/giftCards.ts), never trusted from the
+    // client's own preview at /api/checkout/gift-card. Both can be applied
+    // to the same order.
+    giftCardCode: z.string().optional(),
   })
   .refine((data) => data.shippingAddressId || data.shippingAddress, {
     message: "A shipping address is required.",
@@ -197,6 +203,30 @@ export async function POST(request: NextRequest) {
     totals = { subtotal, shipping, tax: totals.tax, total };
   }
 
+  // Gift card — a separate, independent code from the coupon above, applied
+  // AFTER the coupon so it covers whatever's left of the order once the
+  // coupon discount is already factored in. Re-validated from scratch here
+  // for the same "never trust the client's preview" reason as the coupon
+  // block above.
+  let giftCardId: string | null = null;
+  let giftCardAmountApplied = 0;
+  if (parsed.data.giftCardCode) {
+    const amountRemainingToCover = Math.max(totals.subtotal - discount + totals.shipping + totals.tax, 0);
+    let application;
+    try {
+      application = await validateGiftCard(parsed.data.giftCardCode, { amountRemainingToCover });
+    } catch (err) {
+      if (err instanceof GiftCardInvalidError) {
+        return NextResponse.json({ error: err.message }, { status: 400 });
+      }
+      throw err;
+    }
+    giftCardId = application.giftCard.id;
+    giftCardAmountApplied = application.amountAvailable;
+    const total = Math.max(totals.subtotal - discount - giftCardAmountApplied + totals.shipping + totals.tax, 0);
+    totals = { ...totals, total };
+  }
+
   // orderNumber collisions are astronomically unlikely (timestamp + random
   // suffix) but the column is unique, so retry a couple of times rather
   // than letting a freak collision 500 the whole checkout. Order creation
@@ -226,6 +256,8 @@ export async function POST(request: NextRequest) {
             selectedCarrier,
             selectedService,
             couponId,
+            giftCardId,
+            giftCardAmountApplied: giftCardAmountApplied > 0 ? giftCardAmountApplied : null,
             items: {
               create: items.map((item) => ({
                 productId: item.productVariant.productId,
@@ -254,11 +286,18 @@ export async function POST(request: NextRequest) {
           await tx.coupon.update({ where: { id: couponId }, data: { timesUsed: { increment: 1 } } });
         }
 
+        if (giftCardId && giftCardAmountApplied > 0) {
+          await redeemGiftCard(tx, giftCardId, giftCardAmountApplied, created.id);
+        }
+
         return created;
       });
       break;
     } catch (err) {
       if (err instanceof InsufficientStockError) {
+        return NextResponse.json({ error: err.message }, { status: 400 });
+      }
+      if (err instanceof GiftCardInvalidError) {
         return NextResponse.json({ error: err.message }, { status: 400 });
       }
       const isUniqueClash = err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
@@ -307,11 +346,15 @@ export async function POST(request: NextRequest) {
     // Stripe's `discounts` param is session-wide (would otherwise also
     // apply to the shipping line item), so `amount_off` is used regardless
     // of the original coupon's type to guarantee Stripe charges exactly
-    // `totals.total`, never a value it recomputed itself.
+    // `totals.total`, never a value it recomputed itself. The coupon
+    // discount and gift card amount are combined into this single
+    // Stripe-side coupon — Stripe never separately "sees" the gift card,
+    // it just charges the smaller total.
+    const totalDiscountForStripe = discount + giftCardAmountApplied;
     let stripeDiscountId: string | undefined;
-    if (discount > 0) {
+    if (totalDiscountForStripe > 0) {
       const stripeCoupon = await stripe.coupons.create({
-        amount_off: Math.round(discount * 100),
+        amount_off: Math.round(totalDiscountForStripe * 100),
         currency: "usd",
         duration: "once",
         name: `Order ${order.orderNumber} discount`,

@@ -106,6 +106,26 @@ export function giftClaimEmail(recipientName: string, purchaserFirstName: string
   };
 }
 
+export function giftCardDeliveredEmail(
+  recipientName: string,
+  senderName: string,
+  amount: string,
+  code: string,
+  giftMessage: string | null
+) {
+  return {
+    subject: `${senderName} sent you a ${amount} gift card`,
+    html: layout(
+      "You've got a gift card",
+      p(`Hi ${recipientName || "there"}, ${senderName} sent you a ${amount} Ethiopicana Coffee gift card.`) +
+        (giftMessage ? p(`&ldquo;${giftMessage}&rdquo;`) : "") +
+        `<p style="margin:0 0 16px;font-size:20px;letter-spacing:0.05em;font-family:monospace;text-align:center;padding:16px;border:1px dashed #ddd4c5;">${code}</p>` +
+        p("Enter this code at checkout — the balance carries over across multiple orders until it's used up.") +
+        button(`${APP_URL}/shop`, "Start shopping"),
+    ),
+  };
+}
+
 export function shippingNotificationEmail(firstName: string, orderNumber: string, carrier: string | null, trackingNumber: string | null) {
   return {
     subject: `Your order ${orderNumber} has shipped`,

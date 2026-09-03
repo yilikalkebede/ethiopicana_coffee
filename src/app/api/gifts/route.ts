@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, UnauthorizedError } from "@/lib/auth";
 import { stripe, STRIPE_TAX_ENABLED } from "@/lib/stripe";
 import { giftPurchaseSchema } from "@/lib/validation";
-import { computeSubscriptionPrice } from "@/lib/subscriptionPricing";
+import { computeGiftPrice, FREQUENCY_LABEL } from "@/lib/subscriptionPricing";
 
 /**
  * A gift is a real one-time Stripe payment (mode: "payment") covering
@@ -31,8 +31,7 @@ export async function POST(request: NextRequest) {
       await prisma.user.update({ where: { id: user.id }, data: { stripeCustomerId } });
     }
 
-    const monthlyPrice = computeSubscriptionPrice(data.ounces);
-    const amount = Math.round(monthlyPrice * data.durationMonths * 100) / 100;
+    const amount = computeGiftPrice(data.ounces, data.shipments);
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
     const metadata: Record<string, string> = {
@@ -42,7 +41,8 @@ export async function POST(request: NextRequest) {
       recipientName: data.recipientName ?? "",
       giftMessage: data.giftMessage ?? "",
       deliveryDate: data.deliveryDate.toISOString(),
-      durationMonths: String(data.durationMonths),
+      shipments: String(data.shipments),
+      frequency: data.frequency,
       renewable: String(data.renewable),
       ounces: String(data.ounces),
     };
@@ -54,7 +54,9 @@ export async function POST(request: NextRequest) {
         {
           price_data: {
             currency: "usd",
-            product_data: { name: `Gift Subscription — ${data.ounces}oz × ${data.durationMonths} months` },
+            product_data: {
+              name: `Gift Subscription — ${data.ounces}oz × ${data.shipments} shipments (${FREQUENCY_LABEL[data.frequency]})`,
+            },
             unit_amount: Math.round(amount * 100),
           },
           quantity: 1,

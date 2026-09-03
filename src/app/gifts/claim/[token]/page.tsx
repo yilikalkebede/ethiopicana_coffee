@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { GiftClaimForm } from "@/components/GiftClaimForm";
+import { FREQUENCY_LABEL } from "@/lib/subscriptionPricing";
 
 export default async function GiftClaimPage({ params }: { params: { token: string } }) {
   const gift = await prisma.giftSubscription.findUnique({ where: { claimToken: params.token }, include: { purchaser: true } });
@@ -18,7 +19,7 @@ export default async function GiftClaimPage({ params }: { params: { token: strin
     <section className="mx-auto max-w-2xl px-6 py-16">
       <p className="font-mono text-[11px] uppercase tracking-tag text-belt-700">You&apos;ve got a gift</p>
       <h1 className="mt-2 text-4xl text-ink">
-        {gift.purchaser.firstName} sent you {gift.durationMonths} months of Ethiopian coffee.
+        {gift.purchaser.firstName} sent you {gift.shipments} shipments of Ethiopian coffee.
       </h1>
       {gift.giftMessage && (
         <p className="mt-4 border border-line bg-belt-50 p-4 font-body text-ink-soft">&ldquo;{gift.giftMessage}&rdquo;</p>
@@ -44,7 +45,7 @@ export default async function GiftClaimPage({ params }: { params: { token: strin
         <div className="mt-8">
           <h2 className="font-display text-lg text-ink">Pick your coffee</h2>
           <p className="mt-1 font-body text-sm text-ink-soft">
-            {gift.ounces}oz every 4 weeks, for {gift.durationMonths} months — already paid for. Just tell us how you drink it.
+            {gift.ounces}oz {FREQUENCY_LABEL[gift.frequency].toLowerCase()}, {gift.shipments} shipments — already paid for. Just tell us how you drink it.
           </p>
           <div className="mt-6">
             <GiftClaimForm

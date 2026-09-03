@@ -58,6 +58,13 @@ export function CheckoutForm({
   const [couponError, setCouponError] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number; freeShipping: boolean } | null>(null);
 
+  // A gift card is a fully independent code from the coupon above — both
+  // can be applied to the same order at once.
+  const [giftCardInput, setGiftCardInput] = useState("");
+  const [giftCardSubmitting, setGiftCardSubmitting] = useState(false);
+  const [giftCardError, setGiftCardError] = useState<string | null>(null);
+  const [appliedGiftCard, setAppliedGiftCard] = useState<{ code: string; remainingBalance: number } | null>(null);
+
   useEffect(() => {
     if (!loading && items.length === 0 && !redirecting) {
       router.replace("/cart");
@@ -128,7 +135,13 @@ export function CheckoutForm({
           : null;
 
   const discount = appliedCoupon?.freeShipping ? 0 : (appliedCoupon?.discount ?? 0);
-  const estimatedTotal = shippingCost === null ? null : Math.max(subtotal - discount + shippingCost, 0);
+  // Mirrors the server's own min(remainingBalance, amountRemainingToCover) —
+  // an estimate only; the authoritative amount is recomputed at order
+  // creation (src/app/api/checkout/route.ts).
+  const giftCardApplied = appliedGiftCard
+    ? Math.min(appliedGiftCard.remainingBalance, Math.max(subtotal - discount + (shippingCost ?? 0), 0))
+    : 0;
+  const estimatedTotal = shippingCost === null ? null : Math.max(subtotal - discount - giftCardApplied + shippingCost, 0);
   const canSubmit = !ratesLoading && shippingCost !== null && items.length > 0;
 
   async function applyCoupon() {
@@ -162,6 +175,36 @@ export function CheckoutForm({
     setCouponError(null);
   }
 
+  async function applyGiftCard() {
+    if (!giftCardInput.trim()) return;
+    setGiftCardSubmitting(true);
+    setGiftCardError(null);
+    const res = await fetch("/api/checkout/gift-card", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: giftCardInput.trim() }),
+    });
+    setGiftCardSubmitting(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setGiftCardError(data.error ?? "Something went wrong.");
+      return;
+    }
+    const data = await res.json();
+    if (!data.valid) {
+      setGiftCardError(data.error ?? "That code isn't valid.");
+      return;
+    }
+    setAppliedGiftCard({ code: giftCardInput.trim().toUpperCase(), remainingBalance: data.remainingBalance });
+  }
+
+  function removeGiftCard() {
+    setAppliedGiftCard(null);
+    setGiftCardInput("");
+    setGiftCardError(null);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -185,6 +228,9 @@ export function CheckoutForm({
     }
     if (appliedCoupon) {
       payload.couponCode = appliedCoupon.code;
+    }
+    if (appliedGiftCard) {
+      payload.giftCardCode = appliedGiftCard.code;
     }
 
     const res = await fetch("/api/checkout", {
@@ -397,6 +443,47 @@ export function CheckoutForm({
         </div>
 
         <div>
+          <h2 className="font-display text-lg text-ink">Gift card</h2>
+          {appliedGiftCard ? (
+            <div className="mt-3 flex items-center justify-between border border-belt-500 px-4 py-3">
+              <span className="font-body text-sm text-ink">
+                <span className="font-mono">{appliedGiftCard.code}</span> applied —{" "}
+                {formatPrice(appliedGiftCard.remainingBalance)} available
+              </span>
+              <button
+                type="button"
+                onClick={removeGiftCard}
+                className="font-mono text-[10px] uppercase tracking-tag text-ink-soft hover:text-rust"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div className="mt-3 flex gap-3">
+              <label htmlFor="gift-card-code" className="sr-only">
+                Gift card code
+              </label>
+              <input
+                id="gift-card-code"
+                value={giftCardInput}
+                onChange={(e) => setGiftCardInput(e.target.value)}
+                placeholder="Enter gift card code"
+                className="flex-1 border border-line bg-paper px-3 py-2 font-body text-sm uppercase text-ink focus-visible:outline-belt-500"
+              />
+              <button
+                type="button"
+                onClick={applyGiftCard}
+                disabled={giftCardSubmitting || !giftCardInput.trim()}
+                className="btn-secondary !px-5 !py-2 text-xs disabled:opacity-50"
+              >
+                {giftCardSubmitting ? "Checking…" : "Apply"}
+              </button>
+            </div>
+          )}
+          {giftCardError && <p className="mt-2 font-body text-sm text-rust">{giftCardError}</p>}
+        </div>
+
+        <div>
           <h2 className="font-display text-lg text-ink">Payment</h2>
           <p className="mt-3 border border-line px-4 py-3 font-body text-sm text-ink-soft">
             You&apos;ll enter your card on Stripe&apos;s secure payment page next — we never see or store your card
@@ -440,6 +527,12 @@ export function CheckoutForm({
             <div className="flex justify-between text-belt-700">
               <span>Discount ({appliedCoupon?.code})</span>
               <span>-{formatPrice(discount)}</span>
+            </div>
+          )}
+          {giftCardApplied > 0 && (
+            <div className="flex justify-between text-belt-700">
+              <span>Gift card ({appliedGiftCard?.code})</span>
+              <span>-{formatPrice(giftCardApplied)}</span>
             </div>
           )}
           <div className="flex justify-between text-ink-soft">
