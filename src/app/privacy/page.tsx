@@ -99,7 +99,7 @@ export default function PrivacyPage() {
 
         <div>
           <h2 className="font-display text-xl text-ink">Contact</h2>
-          <p className="mt-2">Questions about this policy? Reach us at hello@latitudecoffee.example.</p>
+          <p className="mt-2">Questions about this policy? Reach us at hello@ethiopicana.example.</p>
         </div>
 
         <p className="border-t border-line pt-6 text-xs text-ink-soft">

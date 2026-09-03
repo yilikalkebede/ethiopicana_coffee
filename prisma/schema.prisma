@@ -1,4 +1,4 @@
-// Latitude Coffee Co. — core database schema
+// Ethiopicana Coffee — core database schema
 // Phase 1 delivers the full relational model so later phases (checkout,
 // subscriptions, inventory, shipping, rewards) build on real, normalized
 // tables rather than being retrofitted in.

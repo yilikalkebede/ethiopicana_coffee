@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import type { RoleName, User } from "@prisma/client";
 
-const SESSION_COOKIE = "latitude_session";
+const SESSION_COOKIE = "ethiopicana_session";
 const SESSION_TTL_DAYS = 30;
 const BCRYPT_ROUNDS = 12;
 

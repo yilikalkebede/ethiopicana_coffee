@@ -27,7 +27,7 @@ const plexMono = IBM_Plex_Mono({
   weight: ["400", "500"],
 });
 
-const SITE_NAME = "Latitude Coffee Co.";
+const SITE_NAME = "Ethiopicana Coffee";
 const SITE_DESCRIPTION =
   "Coffee sourced entirely from Ethiopia — Yirgacheffe, Sidama, Guji, Harrar, and more — tracked to the region and washing station it grew in. Shop one-time bags or build a subscription tuned to how you actually brew.";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

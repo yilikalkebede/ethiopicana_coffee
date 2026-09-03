@@ -7,7 +7,7 @@ import { getPrimaryImage } from "@/lib/productImage";
 export const metadata: Metadata = {
   title: "Ethiopia's Coffee Regions",
   description:
-    "Explore the named regions and washing stations behind every Latitude Coffee Co. lot — Yirgacheffe, Sidama, Guji, Harrar, Limu, and Jimma.",
+    "Explore the named regions and washing stations behind every Ethiopicana Coffee lot — Yirgacheffe, Sidama, Guji, Harrar, Limu, and Jimma.",
   alternates: { canonical: "/origins" },
 };
 

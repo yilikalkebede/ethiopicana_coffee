@@ -1,4 +1,4 @@
-# Latitude Coffee Co.
+# Ethiopicana Coffee
 
 A premium coffee ecommerce + subscription platform, sourced entirely from
 Ethiopia. This repo is being built in phases (see **Roadmap** below);
@@ -37,7 +37,7 @@ See **Deployment** below to actually put this live.
   grind/bag-size selector and live stock status
 - **Cart** — a real DB-backed cart (`Cart`/`CartItem` in
   `prisma/schema.prisma`), not client-only state: works for guests (tracked
-  via an httpOnly `latitude_cart` cookie) and logged-in users, merges a
+  via an httpOnly `ethiopicana_cart` cookie) and logged-in users, merges a
   guest cart into the account cart on login/register
   (`src/lib/cart.ts`, `src/app/api/cart/*`), with a slide-out drawer and a
   full `/cart` page sharing the same data
@@ -133,9 +133,9 @@ Seeded logins (change these immediately in anything beyond local dev):
 
 | Role     | Email                              | Password       |
 |----------|-------------------------------------|----------------|
-| Admin    | admin@latitudecoffee.example        | ChangeMe123!   |
-| Manager  | manager@latitudecoffee.example      | ChangeMe123!   |
-| Customer | customer@latitudecoffee.example     | ChangeMe123!   |
+| Admin    | admin@ethiopicana.example        | ChangeMe123!   |
+| Manager  | manager@ethiopicana.example      | ChangeMe123!   |
+| Customer | customer@ethiopicana.example     | ChangeMe123!   |
 
 You need a real Postgres instance for `DATABASE_URL` (local Postgres,
 Docker, or a managed provider like Neon/Supabase/RDS). Email and shipping

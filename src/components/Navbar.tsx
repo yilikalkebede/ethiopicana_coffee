@@ -10,7 +10,7 @@ export function Navbar({ user }: { user: NavUser }) {
     <header className="border-b border-line bg-paper">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
         <Link href="/" className="shrink-0 font-display text-xl tracking-tight text-ink">
-          Latitude <span className="italic text-belt-500">Coffee Co.</span>
+          Ethiopicana <span className="italic text-belt-500">Coffee</span>
         </Link>
 
         <nav className="hidden items-center gap-8 font-body text-sm text-ink-soft lg:flex">

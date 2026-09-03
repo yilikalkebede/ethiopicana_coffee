@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import type { Cart } from "@prisma/client";
 
-const CART_COOKIE = "latitude_cart";
+const CART_COOKIE = "ethiopicana_cart";
 const CART_COOKIE_TTL_DAYS = 90;
 
 function generateGuestToken(): string {

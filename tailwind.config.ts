@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 // ---------------------------------------------------------------------------
-// LATITUDE COFFEE CO. — design tokens
+// ETHIOPICANA COFFEE — design tokens
 //
 // Concept: coffee only grows in a narrow band around the equator (the "bean
 // belt", roughly 25°N–25°S). The brand treats every lot like a specimen

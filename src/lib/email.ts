@@ -16,7 +16,7 @@ function getResendClient(): Resend {
   return globalForEmail.resend;
 }
 
-const FROM = process.env.EMAIL_FROM || "Latitude Coffee Co. <onboarding@resend.dev>";
+const FROM = process.env.EMAIL_FROM || "Ethiopicana Coffee <onboarding@resend.dev>";
 
 /**
  * Never throws — every call site is either a webhook handler (a failure

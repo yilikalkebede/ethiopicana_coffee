@@ -6,8 +6,8 @@ on:
   pull_request:
 
 env:
-  DATABASE_URL: postgresql://latitude:latitude@localhost:5432/latitude_ci
-  DIRECT_URL: postgresql://latitude:latitude@localhost:5432/latitude_ci
+  DATABASE_URL: postgresql://ethiopicana:ethiopicana@localhost:5432/ethiopicana_ci
+  DIRECT_URL: postgresql://ethiopicana:ethiopicana@localhost:5432/ethiopicana_ci
   NEXT_PUBLIC_APP_URL: http://localhost:3000
 
 jobs:
@@ -22,13 +22,13 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: latitude
-          POSTGRES_PASSWORD: latitude
-          POSTGRES_DB: latitude_ci
+          POSTGRES_USER: ethiopicana
+          POSTGRES_PASSWORD: ethiopicana
+          POSTGRES_DB: ethiopicana_ci
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U latitude"
+          --health-cmd "pg_isready -U ethiopicana"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -58,13 +58,13 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: latitude
-          POSTGRES_PASSWORD: latitude
-          POSTGRES_DB: latitude_ci
+          POSTGRES_USER: ethiopicana
+          POSTGRES_PASSWORD: ethiopicana
+          POSTGRES_DB: ethiopicana_ci
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U latitude"
+          --health-cmd "pg_isready -U ethiopicana"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5

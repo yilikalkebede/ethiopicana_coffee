@@ -7,7 +7,7 @@ export function Footer() {
         <div className="grid grid-cols-2 gap-10 md:grid-cols-6">
           <div className="col-span-2">
             <p className="font-display text-lg text-ink">
-              Latitude <span className="italic text-belt-500">Coffee Co.</span>
+              Ethiopicana <span className="italic text-belt-500">Coffee</span>
             </p>
             <p className="mt-3 max-w-xs font-body text-sm text-ink-soft">
               Every bag we sell is Ethiopian — coffee&apos;s birthplace. We buy
@@ -56,7 +56,7 @@ export function Footer() {
         </div>
 
         <div className="mt-14 flex flex-col justify-between gap-4 border-t border-line pt-6 font-mono text-[11px] uppercase tracking-tag text-ink-soft md:flex-row">
-          <span>© {new Date().getFullYear()} Latitude Coffee Co.</span>
+          <span>© {new Date().getFullYear()} Ethiopicana Coffee</span>
           <span>3°N–15°N — the whole of Ethiopia&apos;s coffee highlands</span>
         </div>
       </div>

@@ -56,10 +56,10 @@ async function main() {
   const passwordHash = await bcrypt.hash("ChangeMe123!", 12);
 
   const admin = await prisma.user.upsert({
-    where: { email: "admin@latitudecoffee.example" },
+    where: { email: "admin@ethiopicana.example" },
     update: {},
     create: {
-      email: "admin@latitudecoffee.example",
+      email: "admin@ethiopicana.example",
       passwordHash,
       firstName: "Ada",
       lastName: "Ríos",
@@ -72,10 +72,10 @@ async function main() {
   });
 
   await prisma.user.upsert({
-    where: { email: "manager@latitudecoffee.example" },
+    where: { email: "manager@ethiopicana.example" },
     update: {},
     create: {
-      email: "manager@latitudecoffee.example",
+      email: "manager@ethiopicana.example",
       passwordHash,
       firstName: "Marco",
       lastName: "Diallo",
@@ -88,10 +88,10 @@ async function main() {
   });
 
   const customer = await prisma.user.upsert({
-    where: { email: "customer@latitudecoffee.example" },
+    where: { email: "customer@ethiopicana.example" },
     update: {},
     create: {
-      email: "customer@latitudecoffee.example",
+      email: "customer@ethiopicana.example",
       passwordHash,
       firstName: "Priya",
       lastName: "Chen",
@@ -129,7 +129,7 @@ async function main() {
     { suffix: "12GR", name: "12oz / Ground", bagSize: "12oz", grind: "ground", inventoryQuantity: gr, lowStockThreshold },
   ];
 
-  // Latitude Coffee Co. is a single-country specialist: every lot is
+  // Ethiopicana Coffee is a single-country specialist: every lot is
   // Ethiopian, sourced from a named region/washing station. At least 10
   // coffees across every category, with deliberately varied stock levels
   // (in stock / low stock / out of stock) so the inventory dashboard in a
@@ -421,9 +421,9 @@ async function main() {
   }
 
   console.log("Seed complete.");
-  console.log("  Admin login:    admin@latitudecoffee.example / ChangeMe123!");
-  console.log("  Manager login:  manager@latitudecoffee.example / ChangeMe123!");
-  console.log("  Customer login: customer@latitudecoffee.example / ChangeMe123!");
+  console.log("  Admin login:    admin@ethiopicana.example / ChangeMe123!");
+  console.log("  Manager login:  manager@ethiopicana.example / ChangeMe123!");
+  console.log("  Customer login: customer@ethiopicana.example / ChangeMe123!");
 }
 
 main()

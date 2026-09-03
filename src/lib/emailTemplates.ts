@@ -15,7 +15,7 @@ function layout(title: string, bodyHtml: string): string {
           <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border:1px solid #ddd4c5;">
             <tr>
               <td style="padding:28px 32px;border-bottom:1px solid #ddd4c5;">
-                <span style="font-size:18px;letter-spacing:0.02em;">Latitude <em>Coffee Co.</em></span>
+                <span style="font-size:18px;letter-spacing:0.02em;">Ethiopicana <em>Coffee</em></span>
               </td>
             </tr>
             <tr>
@@ -26,7 +26,7 @@ function layout(title: string, bodyHtml: string): string {
             </tr>
             <tr>
               <td style="padding:20px 32px;border-top:1px solid #ddd4c5;font-size:12px;color:#8a8072;font-family:monospace;">
-                Latitude Coffee Co. — 100% Ethiopian coffee
+                Ethiopicana Coffee — 100% Ethiopian coffee
               </td>
             </tr>
           </table>
@@ -48,7 +48,7 @@ function p(text: string): string {
 export function verificationEmail(firstName: string, token: string) {
   const url = `${APP_URL}/api/auth/verify-email/${token}`;
   return {
-    subject: "Verify your email — Latitude Coffee Co.",
+    subject: "Verify your email — Ethiopicana Coffee",
     html: layout(
       "Verify your email",
       p(`Hi ${firstName}, confirm this is your email address to finish setting up your account.`) +
@@ -61,7 +61,7 @@ export function verificationEmail(firstName: string, token: string) {
 export function passwordResetEmail(firstName: string, token: string) {
   const url = `${APP_URL}/reset-password/${token}`;
   return {
-    subject: "Reset your password — Latitude Coffee Co.",
+    subject: "Reset your password — Ethiopicana Coffee",
     html: layout(
       "Reset your password",
       p(`Hi ${firstName}, we got a request to reset your password. This link expires in 1 hour.`) +
@@ -133,7 +133,7 @@ export function reviewRequestEmail(firstName: string, productNames: string[], or
 export function newsletterConfirmationEmail(unsubscribeToken: string) {
   const unsubscribeUrl = `${APP_URL}/api/newsletter/unsubscribe/${unsubscribeToken}`;
   return {
-    subject: "You're subscribed — Latitude Coffee Co.",
+    subject: "You're subscribed — Ethiopicana Coffee",
     html: layout(
       "You're on the list",
       p("Thanks for subscribing. One email a month when a new Ethiopian lot lands — no spam.") +

@@ -20,7 +20,7 @@ export function middleware(request: NextRequest) {
   const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   if (!isProtected) return NextResponse.next();
 
-  const hasSession = request.cookies.has("latitude_session");
+  const hasSession = request.cookies.has("ethiopicana_session");
   if (!hasSession) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);

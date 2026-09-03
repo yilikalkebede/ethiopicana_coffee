@@ -6,7 +6,7 @@ import { AddressFields, EMPTY_ADDRESS, type AddressInput } from "@/components/Ad
 import { formatPrice } from "@/lib/format";
 import { FREQUENCY_LABEL } from "@/lib/subscriptionPricing";
 
-const DRAFT_KEY = "latitude_subscription_draft";
+const DRAFT_KEY = "ethiopicana_subscription_draft";
 const TOTAL_STEPS = 7;
 
 const BREW_METHODS = [

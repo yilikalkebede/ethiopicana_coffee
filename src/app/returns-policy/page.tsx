@@ -66,7 +66,7 @@ export default function ReturnsPolicyPage() {
 
         <div>
           <h2 className="font-display text-xl text-ink">Start a return</h2>
-          <p className="mt-2">Email hello@latitudecoffee.example with your order number and we&apos;ll take it from there.</p>
+          <p className="mt-2">Email hello@ethiopicana.example with your order number and we&apos;ll take it from there.</p>
         </div>
 
         <p className="border-t border-line pt-6 text-xs text-ink-soft">

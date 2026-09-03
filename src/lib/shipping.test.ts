@@ -6,7 +6,7 @@ describe("snapshotToShipTo", () => {
     const snapshot = {
       firstName: "Ada",
       lastName: "Rios",
-      company: "Latitude Roastery",
+      company: "Ethiopicana Roastery",
       address1: "123 Main St",
       address2: "Apt 4",
       city: "Portland",
@@ -17,7 +17,7 @@ describe("snapshotToShipTo", () => {
     };
     expect(snapshotToShipTo(snapshot)).toEqual({
       name: "Ada Rios",
-      company: "Latitude Roastery",
+      company: "Ethiopicana Roastery",
       street1: "123 Main St",
       street2: "Apt 4",
       city: "Portland",
