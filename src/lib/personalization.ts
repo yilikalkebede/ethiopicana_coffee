@@ -6,7 +6,10 @@ import type { Product, ProductVariant } from "@prisma/client";
 // notes (spec §8: "Initially use deterministic rules... design the
 // database and API so a future AI recommendation engine can replace the
 // rules"). This table *is* that rule set — small, inspectable, editable.
-const FLAVOR_CATEGORY_KEYWORDS: Record<string, string[]> = {
+// Exported so the homepage's "Choose Your Flavor" section and the shop
+// page's flavor filter can group by the same real categories, not
+// reimplement their own (inevitably drifting) copy of this list.
+export const FLAVOR_CATEGORY_KEYWORDS: Record<string, string[]> = {
   chocolatey: ["chocolate", "cocoa"],
   nutty: ["pecan", "almond", "walnut", "hazelnut"],
   fruity: ["fruit", "peach", "berry", "cherry", "fig", "apple", "tropical"],
@@ -17,6 +20,14 @@ const FLAVOR_CATEGORY_KEYWORDS: Record<string, string[]> = {
   bold: ["bold", "syrupy", "spice", "body"],
   complex: ["complex", "wine", "winey", "funky"],
 };
+
+/** The one place "does this product belong to this flavor category" is
+ * decided — used by scoreProduct's subscription matching, the homepage's
+ * flavor counts, and the shop page's flavor filter, so all three agree. */
+export function matchesFlavorCategory(flavorNotes: string[], category: string): boolean {
+  const keywords = FLAVOR_CATEGORY_KEYWORDS[category] ?? [];
+  return flavorNotes.some((note) => keywords.some((k) => note.toLowerCase().includes(k)));
+}
 
 export type SubscriptionPreferences = {
   roastPreference: string; // "light" | "medium" | "medium-dark" | "dark" | "surprise"
@@ -31,9 +42,7 @@ export function scoreProduct(product: Pick<Product, "roastLevel" | "brewMethods"
   if (prefs.roastPreference !== "surprise" && product.roastLevel === prefs.roastPreference) score += 3;
   if (product.brewMethods.includes(prefs.brewMethod)) score += 2;
   for (const category of prefs.flavorPreference) {
-    const keywords = FLAVOR_CATEGORY_KEYWORDS[category] ?? [];
-    const hit = product.flavorNotes.some((note) => keywords.some((k) => note.toLowerCase().includes(k)));
-    if (hit) score += 1;
+    if (matchesFlavorCategory(product.flavorNotes, category)) score += 1;
   }
   return score;
 }

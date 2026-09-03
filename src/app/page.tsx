@@ -4,6 +4,8 @@ import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { NewsletterForm } from "@/components/NewsletterForm";
 import { getPrimaryImage } from "@/lib/productImage";
+import { getRegions } from "@/lib/regions";
+import { FLAVOR_CATEGORY_KEYWORDS, matchesFlavorCategory } from "@/lib/personalization";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -22,8 +24,30 @@ async function getCurrentMonthlyCoffee() {
   }
 }
 
+/** Only categories with at least one real matching product are ever
+ * returned — a flavor filter that returns zero results is a broken link,
+ * not a feature, so this stays correct as the catalog changes rather than
+ * hardcoding which of the 9 categories currently happen to have coffee. */
+async function getFlavorCategories() {
+  const products = await prisma.product.findMany({
+    where: { active: true },
+    select: { flavorNotes: true },
+  });
+
+  return Object.keys(FLAVOR_CATEGORY_KEYWORDS)
+    .map((category) => ({
+      category,
+      count: products.filter((p) => matchesFlavorCategory(p.flavorNotes, category)).length,
+    }))
+    .filter((c) => c.count > 0);
+}
+
 export default async function HomePage() {
-  const monthly = await getCurrentMonthlyCoffee();
+  const [monthly, regions, flavorCategories] = await Promise.all([
+    getCurrentMonthlyCoffee(),
+    getRegions().catch(() => []),
+    getFlavorCategories().catch(() => []),
+  ]);
   const monthlyImage = monthly ? getPrimaryImage(monthly.product.images) : null;
 
   const heroTag =
@@ -124,6 +148,88 @@ export default async function HomePage() {
           )}
         </div>
       </section>
+
+      {/* Discover Ethiopia */}
+      {regions.length > 0 && (
+        <section className="border-t border-line py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <span className="specimen-tag">Discover Ethiopia</span>
+            <h2 className="mt-4 text-3xl text-ink">Explore by growing region</h2>
+            <p className="mt-3 max-w-2xl font-body text-sm text-ink-soft">
+              Every bag traces back to a named region and washing station — no blended-anonymous origin.
+            </p>
+
+            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
+              {regions.map((region) => {
+                const tagParts: string[] = [];
+                if (region.latitude != null && region.longitude != null) {
+                  tagParts.push(`${region.latitude}°N · ${region.longitude}°E`);
+                }
+                if (region.minElevation != null && region.maxElevation != null) {
+                  tagParts.push(
+                    region.minElevation === region.maxElevation
+                      ? `${region.minElevation}m`
+                      : `${region.minElevation}–${region.maxElevation}m`
+                  );
+                }
+
+                return (
+                  <div key={region.name} className="border border-line">
+                    <div className="relative aspect-square w-full overflow-hidden bg-belt-100">
+                      {region.image && (
+                        <Image
+                          src={region.image.url}
+                          alt={region.image.altText}
+                          fill
+                          sizes="(min-width: 768px) 33vw, 100vw"
+                          className="object-cover"
+                          unoptimized
+                        />
+                      )}
+                    </div>
+                    <div className="p-5">
+                      {tagParts.length > 0 && <span className="specimen-tag">{tagParts.join(" · ")}</span>}
+                      <h3 className="mt-3 text-lg text-ink">{region.name}</h3>
+                      <p className="mt-2 font-body text-sm text-ink-soft">{region.blurb}</p>
+                      <Link
+                        href={`/shop?q=${encodeURIComponent(region.name)}`}
+                        className="mt-4 inline-block font-mono text-[11px] uppercase tracking-tag text-belt-700 hover:text-belt-900"
+                      >
+                        {region.count} coffee{region.count === 1 ? "" : "s"} →
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <Link href="/origins" className="mt-8 inline-block font-mono text-xs uppercase tracking-tag text-belt-700 hover:text-belt-900">
+              Explore all origins →
+            </Link>
+          </div>
+        </section>
+      )}
+
+      {/* Choose Your Flavor */}
+      {flavorCategories.length > 0 && (
+        <section className="border-t border-line bg-paper py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <span className="specimen-tag">Choose your flavor</span>
+            <h2 className="mt-4 text-3xl text-ink">Browse by taste, not just origin</h2>
+            <div className="mt-8 flex flex-wrap gap-3">
+              {flavorCategories.map(({ category, count }) => (
+                <Link
+                  key={category}
+                  href={`/shop?flavor=${encodeURIComponent(category)}`}
+                  className="tag-pill capitalize"
+                >
+                  {category} <span className="text-ink-soft">({count})</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Why choose us / trust */}
       <section className="border-t border-line py-20">

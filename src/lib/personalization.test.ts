@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { scoreProduct, pickVariant } from "@/lib/personalization";
+import { scoreProduct, pickVariant, matchesFlavorCategory } from "@/lib/personalization";
 
 describe("scoreProduct", () => {
   const product = {
@@ -40,6 +40,24 @@ describe("scoreProduct", () => {
       flavorPreference: ["floral", "fruity"],
     });
     expect(score).toBe(3 + 2 + 1 + 1);
+  });
+});
+
+describe("matchesFlavorCategory", () => {
+  it("matches a note that contains a category keyword as a substring", () => {
+    expect(matchesFlavorCategory(["stone fruit", "black tea"], "fruity")).toBe(true);
+  });
+
+  it("matches even when the note has extra words the keyword doesn't", () => {
+    expect(matchesFlavorCategory(["florals", "balanced"], "floral")).toBe(true);
+  });
+
+  it("returns false when no note matches any keyword in the category", () => {
+    expect(matchesFlavorCategory(["earthy", "herbal"], "chocolatey")).toBe(false);
+  });
+
+  it("returns false for an unrecognized category", () => {
+    expect(matchesFlavorCategory(["chocolate"], "not-a-real-category")).toBe(false);
   });
 });
 

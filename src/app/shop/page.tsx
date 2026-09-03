@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { FilterPanel } from "@/components/FilterPanel";
 import { ProductGrid } from "@/components/ProductGrid";
 import { Pagination } from "@/components/Pagination";
+import { FLAVOR_CATEGORY_KEYWORDS, matchesFlavorCategory } from "@/lib/personalization";
 
 export const metadata: Metadata = {
   title: "Shop Ethiopian Coffee",
@@ -26,8 +27,21 @@ export default async function ShopPage({
   const categorySlug = param(searchParams, "category");
   const region = param(searchParams, "region");
   const roast = param(searchParams, "roast");
+  const flavor = param(searchParams, "flavor");
   const sort = param(searchParams, "sort") ?? "featured";
   const page = Math.max(1, Number(param(searchParams, "page") ?? "1") || 1);
+
+  // flavorNotes is a raw, inconsistent string array (matchesFlavorCategory
+  // does substring-based category matching) — Prisma's `has`/`hasSome` only
+  // do exact array-element matches, so the matching set is computed in JS,
+  // same source of truth as the subscription quiz's scoring and the
+  // homepage's flavor counts (src/lib/personalization.ts). Fetched once,
+  // reused for both the active filter (if any) and the dropdown's list of
+  // categories that actually have real products.
+  const activeFlavorNotes = await prisma.product.findMany({
+    where: { active: true },
+    select: { id: true, flavorNotes: true },
+  });
 
   const where: Prisma.ProductWhereInput = { active: true };
   if (q) {
@@ -41,6 +55,10 @@ export default async function ShopPage({
   if (categorySlug) where.category = { slug: categorySlug };
   if (region) where.region = region;
   if (roast) where.roastLevel = roast;
+  if (flavor) {
+    const matchingIds = activeFlavorNotes.filter((p) => matchesFlavorCategory(p.flavorNotes, flavor)).map((p) => p.id);
+    where.id = { in: matchingIds };
+  }
 
   const orderBy: Prisma.ProductOrderByWithRelationInput[] =
     sort === "price-asc"
@@ -80,6 +98,10 @@ export default async function ShopPage({
 
   const regions = regionRows.map((r) => r.region).filter((r): r is string => Boolean(r));
   const roasts = roastRows.map((r) => r.roastLevel).filter((r): r is string => Boolean(r));
+  // Independent of any currently-applied filter, same convention as regions/roasts above.
+  const flavors = Object.keys(FLAVOR_CATEGORY_KEYWORDS).filter((category) =>
+    activeFlavorNotes.some((p) => matchesFlavorCategory(p.flavorNotes, category))
+  );
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
@@ -91,7 +113,7 @@ export default async function ShopPage({
       </p>
 
       <div className="mt-8">
-        <FilterPanel categories={categories} regions={regions} roasts={roasts} searchParams={searchParams} />
+        <FilterPanel categories={categories} regions={regions} roasts={roasts} flavors={flavors} searchParams={searchParams} />
       </div>
 
       <div className="mt-10">

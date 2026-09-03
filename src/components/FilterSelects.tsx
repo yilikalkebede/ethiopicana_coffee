@@ -9,7 +9,7 @@ const SORTS = [
   { value: "name-asc", label: "Name: A–Z" },
 ];
 
-export function FilterSelects({ regions, roasts }: { regions: string[]; roasts: string[] }) {
+export function FilterSelects({ regions, roasts, flavors }: { regions: string[]; roasts: string[]; flavors: string[] }) {
   const router = useRouter();
   const pathname = usePathname() ?? "/shop";
   const searchParams = useSearchParams();
@@ -52,6 +52,20 @@ export function FilterSelects({ regions, roasts }: { regions: string[]; roasts: 
         {roasts.map((roast) => (
           <option key={roast} value={roast}>
             {roast}
+          </option>
+        ))}
+      </select>
+
+      <select
+        aria-label="Filter by flavor"
+        value={searchParams?.get("flavor") ?? ""}
+        onChange={(e) => updateParam("flavor", e.target.value)}
+        className="border border-line bg-paper px-3 py-2 font-body text-sm text-ink capitalize"
+      >
+        <option value="">All flavors</option>
+        {flavors.map((flavor) => (
+          <option key={flavor} value={flavor} className="capitalize">
+            {flavor}
           </option>
         ))}
       </select>
