@@ -946,11 +946,23 @@ model JournalPost {
   publishedAt DateTime?
   authorId    String?
   author      User?     @relation(fields: [authorId], references: [id])
+  categoryId  String?
+  category    JournalCategory? @relation(fields: [categoryId], references: [id])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@index([slug])
   @@index([published, publishedAt])
+}
+
+// Flat (no parent/child tree, unlike Product's Category) -- journal topics
+// don't need hierarchy. Seed-managed, same as Category: no dedicated admin
+// CRUD page, just a <select> populated server-side (see JournalPostForm).
+model JournalCategory {
+  id    String        @id @default(cuid())
+  name  String
+  slug  String        @unique
+  posts JournalPost[]
 }
 
 // ---------------------------------------------------------------------------

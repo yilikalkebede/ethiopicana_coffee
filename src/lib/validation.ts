@@ -139,6 +139,11 @@ export const journalPostSchema = z.object({
   excerpt: z.string().optional(),
   body: z.string().min(1),
   published: z.boolean().default(false),
+  // nullable (not just optional): the edit form must be able to send an
+  // explicit null to clear a category, distinct from omitting the key
+  // entirely (which journalPostSchema.partial() treats as "leave
+  // untouched" on PATCH, per Prisma's create/update semantics).
+  categoryId: z.string().nullable().optional(),
 });
 
 export const purchaseOrderSchema = z.object({

@@ -18,6 +18,7 @@ export type JournalPostFormValues = {
   excerpt: string;
   body: string;
   published: boolean;
+  categoryId: string;
 };
 
 export const EMPTY_JOURNAL_POST_FORM: JournalPostFormValues = {
@@ -26,6 +27,7 @@ export const EMPTY_JOURNAL_POST_FORM: JournalPostFormValues = {
   excerpt: "",
   body: "",
   published: false,
+  categoryId: "",
 };
 
 const inputClass =
@@ -36,10 +38,12 @@ export function JournalPostForm({
   mode,
   basePath,
   initial,
+  categories,
 }: {
   mode: "create" | "edit";
   basePath: "/admin" | "/manager";
   initial?: JournalPostFormValues;
+  categories: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [form, setForm] = useState<JournalPostFormValues>(initial ?? EMPTY_JOURNAL_POST_FORM);
@@ -69,6 +73,7 @@ export function JournalPostForm({
       excerpt: form.excerpt || undefined,
       body: form.body,
       published: form.published,
+      categoryId: form.categoryId || null,
     };
 
     const url = mode === "create" ? "/api/admin/journal" : `/api/admin/journal/${form.id}`;
@@ -121,6 +126,21 @@ export function JournalPostForm({
           }}
           className={inputClass}
         />
+      </div>
+
+      <div>
+        <label className={labelClass} htmlFor="jp-category">Category (optional)</label>
+        <select
+          id="jp-category"
+          value={form.categoryId}
+          onChange={(e) => set("categoryId", e.target.value)}
+          className={inputClass}
+        >
+          <option value="">No category</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
       </div>
 
       <div>

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 
 async function getPost(slug: string) {
-  const post = await prisma.journalPost.findUnique({ where: { slug }, include: { author: true } });
+  const post = await prisma.journalPost.findUnique({ where: { slug }, include: { author: true, category: true } });
   if (!post || !post.published) return null;
   return post;
 }
@@ -50,9 +50,16 @@ export default async function JournalPostPage({ params }: { params: { slug: stri
         ← Field journal
       </Link>
 
-      <p className="mt-6 font-mono text-[11px] uppercase tracking-tag text-belt-700">
-        {post.publishedAt?.toLocaleDateString()}
-      </p>
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <p className="font-mono text-[11px] uppercase tracking-tag text-belt-700">
+          {post.publishedAt?.toLocaleDateString()}
+        </p>
+        {post.category && (
+          <Link href={`/journal?category=${post.category.slug}`} className="tag-pill">
+            {post.category.name}
+          </Link>
+        )}
+      </div>
       <h1 className="mt-2 text-4xl text-ink">{post.title}</h1>
 
       <div className="mt-8 space-y-4 font-body text-base leading-relaxed text-ink-soft">

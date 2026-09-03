@@ -10,6 +10,8 @@ export default async function ManagerEditJournalPostPage({ params }: { params: {
   const post = await prisma.journalPost.findUnique({ where: { id: params.id } });
   if (!post) notFound();
 
+  const categories = await prisma.journalCategory.findMany({ orderBy: { name: "asc" } });
+
   return (
     <PortalShell basePath="/manager" roleLabel="Manager" active="journal">
       <h1 className="text-3xl text-ink">{post.title}</h1>
@@ -17,6 +19,7 @@ export default async function ManagerEditJournalPostPage({ params }: { params: {
         <JournalPostForm
           mode="edit"
           basePath="/manager"
+          categories={categories}
           initial={{
             id: post.id,
             title: post.title,
@@ -24,6 +27,7 @@ export default async function ManagerEditJournalPostPage({ params }: { params: {
             excerpt: post.excerpt ?? "",
             body: post.body,
             published: post.published,
+            categoryId: post.categoryId ?? "",
           }}
         />
       </div>

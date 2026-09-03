@@ -420,6 +420,140 @@ async function main() {
     }
   }
 
+  console.log("Seeding journal…");
+  const journalCategoryDefs = [
+    { name: "Origins & Regions", slug: "origins-regions" },
+    { name: "Brewing Guides", slug: "brewing-guides" },
+    { name: "Processing & Craft", slug: "processing-craft" },
+    { name: "Sustainability", slug: "sustainability" },
+  ];
+  const journalCategories = await Promise.all(
+    journalCategoryDefs.map((c) => prisma.journalCategory.upsert({ where: { slug: c.slug }, update: {}, create: c }))
+  );
+  const journalCategoryBySlug = Object.fromEntries(journalCategories.map((c) => [c.slug, c]));
+
+  const journalPostDefs = [
+    {
+      slug: "what-makes-yirgacheffe-taste-like-yirgacheffe",
+      title: "What Makes Yirgacheffe Taste Like Yirgacheffe",
+      excerpt: "Elevation, heirloom varieties, and a washing tradition that's been refined for generations.",
+      category: "origins-regions",
+      body: `Yirgacheffe sits in the Gedeo Zone of southern Ethiopia, most of it above 1,900 meters. That altitude alone does a lot of work: coffee cherries ripen more slowly at elevation, which gives the plant more time to develop sugars and aromatic compounds before harvest.
+
+The region also grows almost entirely heirloom varieties — genetically diverse coffee plants that predate the modern, disease-resistant cultivars grown in most of the world. Nobody bred them for yield or uniformity, which is part of why cup quality can vary lot to lot, but also why the best lots taste unlike anything grown elsewhere.
+
+Then there's processing. Yirgacheffe built its reputation on washed coffee: ripe cherries are pulped the same day they're picked, fermented for around 24 to 48 hours to loosen the remaining fruit, washed clean, and dried slowly on raised beds. That process strips away almost all the fruit pulp before drying, which is exactly why washed Yirgacheffe tends to taste so clean — bright citrus, jasmine, bergamot, a tea-like body — rather than heavy or fruity.
+
+None of those three things — elevation, variety, process — would produce that cup on its own. It's the combination, repeated by farmers who've been refining it for generations, that makes Yirgacheffe recognizable in a blind cup.`,
+    },
+    {
+      slug: "guji-vs-sidama-side-by-side",
+      title: "Guji vs. Sidama, Side by Side",
+      excerpt: "Two neighboring regions, two very different personalities in the cup.",
+      category: "origins-regions",
+      body: `Guji and Sidama sit close enough to each other on a map that it's easy to assume they'd taste similar. In the cup, they usually don't.
+
+Sidama, one of Ethiopia's larger and more established coffee zones, tends to land in a familiar washed-Ethiopian register: bright acidity, a syrupy body, and fruit notes that lean toward citrus and berry rather than tropical. It's a reliable, balanced cup — the kind that made Ethiopian washed coffee famous in the first place.
+
+Guji, a somewhat newer name on specialty coffee menus, is where things get more distinctive. The region grows coffee at similarly high elevations, but Guji lots — especially natural-processed ones — are known for big, wine-like fruit: blueberry, dark cherry, sometimes something close to red wine itself. Even Guji's washed lots tend to carry more stone-fruit sweetness than a typical Sidama.
+
+Neither is "better" — they're just different expressions of similar growing conditions filtered through different local processing traditions and microclimates. If you've only had one, the other is worth seeking out specifically for the contrast.`,
+    },
+    {
+      slug: "dialing-in-pour-over-at-home",
+      title: "Dialing In Pour-Over at Home",
+      excerpt: "Four variables — ratio, grind, temperature, time — and how to adjust each one.",
+      category: "brewing-guides",
+      body: `Pour-over rewards a little precision, but you don't need much gear to get it right. Start with a ratio of about 1:16 — 1 gram of coffee for every 16 grams (roughly milliliters) of water. For a 300g cup, that's about 19g of coffee.
+
+Grind matters more than people expect. Aim for a medium-fine grind, similar in texture to coarse sand. Too coarse and water rushes through without picking up enough flavor, leaving a thin, sour cup. Too fine and it drains too slowly, over-extracting and turning bitter.
+
+Water temperature should sit between 195°F and 205°F (90–96°C) — just off a full boil. Pour a small amount first, about twice the coffee's weight, and let it sit for 30 to 45 seconds. This "bloom" lets trapped CO2 escape so the rest of your pour extracts evenly. Then pour the remaining water in slow, steady circles, aiming to finish the whole brew in 2.5 to 3.5 minutes.
+
+If the result tastes sour or thin, grind finer next time. If it tastes bitter or harsh, grind coarser. Everything else — pour technique, filter type, water — matters less than getting those two dials right first.`,
+    },
+    {
+      slug: "cold-brew-without-the-guesswork",
+      title: "Cold Brew Without the Guesswork",
+      excerpt: "One ratio, one steep time, and a dilution step most people skip.",
+      category: "brewing-guides",
+      body: `Cold brew is one of the most forgiving ways to make coffee, mostly because time does the work that heat usually does. Grind your coffee coarse — coarser than you'd use for drip — and combine it with room-temperature or cold water at a ratio of about 1 part coffee to 8 parts water by weight.
+
+Let it steep, covered, for 12 to 18 hours. Room temperature and refrigerator steeping both work; the fridge just takes a bit longer to reach the same result. Longer steeps pull out more body and sweetness, but past about 20 hours you start picking up unwanted bitterness, so it's worth timing it rather than guessing.
+
+Strain through a fine mesh filter or paper filter — a coarse strainer alone will leave grit behind. What you're left with is a concentrate, not a finished drink: cut it roughly 1:1 with water or milk before serving, adjusting to taste.
+
+The reason cold brew tastes different from hot-brewed coffee cooled down isn't just temperature — cold water extracts a different balance of compounds than hot water does, pulling out less acidity and more of the coffee's natural sweetness. That's why a good cold brew tastes smooth rather than sharp, even from the same beans you'd use for pour-over.`,
+    },
+    {
+      slug: "washed-vs-natural-how-processing-shapes-flavor",
+      title: "Washed vs. Natural: How Processing Shapes Flavor",
+      excerpt: "Same cherry, same tree — two processes that produce almost opposite cups.",
+      category: "processing-craft",
+      body: `Before coffee is coffee, it's a cherry — a seed wrapped in fruit pulp and a papery inner layer. What happens to that fruit between harvest and drying is called processing, and it shapes flavor as much as growing region does.
+
+Washed processing removes the fruit early: cherries are pulped the day they're picked, the seeds ferment briefly in water to loosen the remaining mucilage, then they're washed clean and dried as bare parchment. Because almost none of the fruit sugar stays in contact with the bean, washed coffee tends to taste clean and precise — its acidity and origin character come through clearly, without much fruit sweetness layered on top.
+
+Natural processing skips almost all of that. Whole cherries are dried in the sun, fruit and all, for two to four weeks, and only pulped afterward. The bean sits inside that fruit the entire time, slowly absorbing sugars and aromatic compounds as it dries. The result is a heavier-bodied cup with pronounced fruit character — berry, stone fruit, sometimes something close to wine.
+
+There's a middle path too, often called honey processing, where some but not all of the fruit is removed before drying — splitting the difference between the two. Ethiopia produces serious volumes of both washed and natural coffee, often from the very same farms, which is part of why two lots from the same region can taste so different.`,
+    },
+    {
+      slug: "why-we-roast-to-order",
+      title: "Why We Roast to Order",
+      excerpt: "Coffee has a flavor window measured in days, not months — so we don't roast until you order.",
+      category: "processing-craft",
+      body: `Roasted coffee isn't shelf-stable in the way most people assume. Right after roasting, beans are still releasing CO2 and volatile aromatic compounds — a process called degassing that continues for several days. Brew too soon after roasting and a cup can taste flat or unevenly extracted; the flavor hasn't fully settled yet.
+
+There's a window, usually starting a few days after roasting and lasting a couple of weeks, where coffee tastes its best — aromatics are at their peak and the roast has had time to stabilize. After that window closes, coffee doesn't go "bad," but it loses brightness and complexity week over week as it stales, even in a sealed bag.
+
+That timeline is exactly why we don't keep pre-roasted stock sitting in a warehouse. Every bag is roasted after you order it and shipped within days, so it reaches you at or near the start of that flavor window instead of the tail end of it. It's a slower way to run a coffee business than roasting in bulk ahead of demand, but it means what arrives at your door was roasted for you, not for inventory.`,
+    },
+    {
+      slug: "direct-trade-explained",
+      title: "Direct Trade, Explained",
+      excerpt: "Buying straight from washing stations and cooperatives, without a chain of middlemen in between.",
+      category: "sustainability",
+      body: `"Direct trade" gets used loosely in coffee marketing, so it's worth being precise about what it actually means. Unlike Fair Trade, which is a formal certification with defined price floors and a paid certification process, direct trade isn't a certification at all — it's a description of how coffee is bought: directly from the washing station, mill, or cooperative that processed it, rather than through a chain of exporters, brokers, and importers each taking a cut.
+
+That matters for a few reasons. Buying directly usually means a bigger share of what's paid actually reaches the producer, rather than being distributed across several intermediary businesses. It also creates a real feedback loop — a buyer who purchases directly, cup after cup, season after season, can tell a washing station which lots tasted best and why, information that rarely survives a long anonymous supply chain.
+
+It's also more work than buying through a single importer who handles everything. It means real relationships with real washing stations, real logistics to manage, and real variability from one harvest to the next. We buy every lot we sell this way — directly from the washing stations and cooperatives that produced it — because it's the only way we've found to actually know where a coffee came from, not just what the bag says.`,
+    },
+    {
+      slug: "what-shade-grown-actually-means",
+      title: "What \"Shade-Grown\" Actually Means",
+      excerpt: "Coffee didn't evolve to grow in open fields — and Ethiopia's forests are where that's most visible.",
+      category: "sustainability",
+      body: `Coffee is naturally an understory plant. In the wild, the coffee species grown for drinking evolved in the highland forests of Ethiopia, growing in the dappled shade beneath taller trees — not in open, sun-exposed rows. "Shade-grown" simply describes coffee grown closer to that original environment, under a forest or tree canopy, rather than on cleared land.
+
+Ethiopia is where you see this most clearly, since it's both coffee's birthplace and a place where large amounts of coffee are still grown in or near native forest, sometimes called forest coffee or semi-forest coffee. Farmers manage the surrounding trees rather than clearing them, letting coffee grow among a genuinely diverse canopy.
+
+There's a practical flavor argument for this too, not just an ecological one: shade slows down cherry ripening, similar to how high elevation does, giving the fruit more time to develop sugar and complexity before harvest. It also supports far more biodiversity — birds, pollinators, other plant life — than a cleared monoculture would.
+
+Not every Ethiopian lot is grown this way, and shade-grown isn't a certification with a strict legal definition the way organic is. But when you taste an Ethiopian coffee with real depth and complexity, there's a decent chance it grew up literally under a forest, the way coffee first did.`,
+    },
+  ] as const;
+
+  await Promise.all(
+    journalPostDefs.map((p) =>
+      prisma.journalPost.upsert({
+        where: { slug: p.slug },
+        update: {},
+        create: {
+          slug: p.slug,
+          title: p.title,
+          excerpt: p.excerpt,
+          body: p.body,
+          published: true,
+          publishedAt: new Date(),
+          authorId: admin.id,
+          categoryId: journalCategoryBySlug[p.category].id,
+        },
+      })
+    )
+  );
+
   console.log("Seed complete.");
   console.log("  Admin login:    admin@ethiopicana.example / ChangeMe123!");
   console.log("  Manager login:  manager@ethiopicana.example / ChangeMe123!");

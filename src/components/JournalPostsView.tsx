@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { DataTable } from "@/components/DataTable";
 
 export async function JournalPostsView({ basePath }: { basePath: "/admin" | "/manager" }) {
-  const posts = await prisma.journalPost.findMany({ orderBy: { createdAt: "desc" } });
+  const posts = await prisma.journalPost.findMany({ orderBy: { createdAt: "desc" }, include: { category: true } });
 
   return (
     <div>
@@ -16,7 +16,7 @@ export async function JournalPostsView({ basePath }: { basePath: "/admin" | "/ma
 
       <div className="mt-6">
         <DataTable
-          headers={["Title", "Status", "Published", "Updated", ""]}
+          headers={["Title", "Category", "Status", "Published", "Updated", ""]}
           isEmpty={posts.length === 0}
           emptyMessage="No posts yet."
         >
@@ -28,6 +28,7 @@ export async function JournalPostsView({ basePath }: { basePath: "/admin" | "/ma
                 </Link>
                 <p className="font-mono text-[10px] uppercase tracking-tag text-ink-soft">{post.slug}</p>
               </td>
+              <td className="px-4 py-3 text-ink-soft">{post.category?.name ?? "—"}</td>
               <td className="px-4 py-3">
                 <span
                   className={`inline-flex items-center border px-2.5 py-1 font-mono text-[10px] uppercase tracking-tag ${
