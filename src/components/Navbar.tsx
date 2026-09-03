@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SearchBar } from "@/components/SearchBar";
 import { CartLink } from "@/components/CartLink";
 import { AccountMenu } from "@/components/AccountMenu";
+import { GiftsMenu } from "@/components/GiftsMenu";
 
 type NavUser = { firstName: string; role: "ADMIN" | "MANAGER" | "CUSTOMER" } | null;
 
@@ -26,12 +27,7 @@ export function Navbar({ user }: { user: NavUser }) {
           <Link href="/origins" className="hover:text-ink">
             Origins
           </Link>
-          <Link href="/gifts" className="hover:text-ink">
-            Gifts
-          </Link>
-          <Link href="/gift-cards" className="hover:text-ink">
-            Gift Cards
-          </Link>
+          <GiftsMenu />
           <Link href="/journal" className="hover:text-ink">
             Field Journal
           </Link>
