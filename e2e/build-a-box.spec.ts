@@ -21,14 +21,20 @@ test("build a box, see it grouped in the cart, and see the discount at checkout"
   await expect(addToCart).toBeEnabled();
   await addToCart.click();
 
-  await expect(page).toHaveURL(/\/cart/);
-  await expect(page.getByText("Build Your Own Box")).toBeVisible();
-  await expect(page.getByText("$65.00")).toBeVisible();
+  // Generous timeouts throughout this block, not the 5s default: under a
+  // busy dev-server (many routes compiling for the first time under
+  // parallel test load), both the client-side navigation AND the
+  // CartProvider's async refresh() after cart:updated can be slow even
+  // though nothing is wrong — same reasoning as subscribe.spec.ts's 15s
+  // wait for its Stripe redirect.
+  await expect(page).toHaveURL(/\/cart/, { timeout: 15_000 });
+  await expect(page.getByText("Build Your Own Box")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("$65.00")).toBeVisible({ timeout: 15_000 });
 
   // Adding to cart opens the cart drawer (CartProvider's cart:updated
   // listener) which overlays the page's own Checkout link — use the
   // drawer's, since it's the one actually on top/interactable.
   await page.getByLabel("Shopping cart").getByRole("link", { name: /Checkout/i }).click();
-  await expect(page).toHaveURL(/\/checkout/);
-  await expect(page.getByText(/Build Your Own Box \(4 bags, \$65\.00\)/)).toBeVisible();
+  await expect(page).toHaveURL(/\/checkout/, { timeout: 15_000 });
+  await expect(page.getByText(/Build Your Own Box \(4 bags, \$65\.00\)/)).toBeVisible({ timeout: 15_000 });
 });

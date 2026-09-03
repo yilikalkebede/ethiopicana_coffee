@@ -20,11 +20,17 @@ export function Navbar({ user }: { user: NavUser }) {
           <Link href="/subscribe" className="hover:text-ink">
             Build a Subscription
           </Link>
+          <Link href="/build-a-box" className="hover:text-ink">
+            Build a Box
+          </Link>
           <Link href="/origins" className="hover:text-ink">
             Origins
           </Link>
           <Link href="/gifts" className="hover:text-ink">
             Gifts
+          </Link>
+          <Link href="/gift-cards" className="hover:text-ink">
+            Gift Cards
           </Link>
           <Link href="/journal" className="hover:text-ink">
             Field Journal
