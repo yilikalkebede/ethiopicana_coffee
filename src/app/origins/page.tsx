@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { getRegions } from "@/lib/regions";
+import { ProductImagePlaceholder } from "@/components/ProductImagePlaceholder";
 
 export const metadata: Metadata = {
   title: "Ethiopia's Coffee Regions",
@@ -39,7 +40,7 @@ export default async function OriginsPage() {
           return (
             <div key={region.name} className="border border-line">
               <div className="relative aspect-[4/5] w-full overflow-hidden bg-belt-100">
-                {region.image && (
+                {region.image ? (
                   <Image
                     src={region.image.url}
                     alt={region.image.altText}
@@ -48,6 +49,8 @@ export default async function OriginsPage() {
                     className="object-cover"
                     unoptimized
                   />
+                ) : (
+                  <ProductImagePlaceholder />
                 )}
               </div>
               <div className="p-5">

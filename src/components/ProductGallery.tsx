@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { ProductImagePlaceholder } from "@/components/ProductImagePlaceholder";
 
 type GalleryImage = { id: string; url: string; altText: string };
 
@@ -12,7 +13,7 @@ export function ProductGallery({ images }: { images: GalleryImage[] }) {
   return (
     <div>
       <div className="relative aspect-[4/5] w-full overflow-hidden border border-line bg-belt-100">
-        {selected && (
+        {selected ? (
           <Image
             src={selected.url}
             alt={selected.altText}
@@ -22,6 +23,8 @@ export function ProductGallery({ images }: { images: GalleryImage[] }) {
             unoptimized
             priority={selectedIndex === 0}
           />
+        ) : (
+          <ProductImagePlaceholder />
         )}
       </div>
 

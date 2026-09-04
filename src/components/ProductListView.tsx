@@ -7,6 +7,7 @@ import { ProductActiveToggle } from "@/components/ProductActiveToggle";
 import { StockBadge } from "@/components/StockBadge";
 import { getProductStockStatus } from "@/lib/stock";
 import { getPrimaryImage } from "@/lib/productImage";
+import { ProductImagePlaceholder } from "@/components/ProductImagePlaceholder";
 
 export async function ProductListView({ basePath, q }: { basePath: "/admin" | "/manager"; q?: string }) {
   const where = q
@@ -56,8 +57,10 @@ export async function ProductListView({ basePath, q }: { basePath: "/admin" | "/
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div className="relative h-10 w-10 shrink-0 border border-line bg-belt-100">
-                    {primaryImage && (
+                    {primaryImage ? (
                       <Image src={primaryImage.url} alt={primaryImage.altText} fill className="object-cover" unoptimized />
+                    ) : (
+                      <ProductImagePlaceholder />
                     )}
                   </div>
                   <div>

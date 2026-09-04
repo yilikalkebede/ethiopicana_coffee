@@ -5,6 +5,7 @@ import Image from "next/image";
 import { formatPrice } from "@/lib/format";
 import { availableStock } from "@/lib/stock";
 import { getPrimaryImage } from "@/lib/productImage";
+import { ProductImagePlaceholder } from "@/components/ProductImagePlaceholder";
 import type { CartItemDTO } from "@/components/CartProvider";
 
 export function CartLineItem({
@@ -43,8 +44,10 @@ export function CartLineItem({
   return (
     <div className="flex gap-4 border-b border-line py-5">
       <div className="relative h-20 w-16 shrink-0 overflow-hidden border border-line bg-belt-100">
-        {primaryImage && (
+        {primaryImage ? (
           <Image src={primaryImage.url} alt={primaryImage.altText} fill sizes="64px" className="object-cover" unoptimized />
+        ) : (
+          <ProductImagePlaceholder />
         )}
       </div>
 

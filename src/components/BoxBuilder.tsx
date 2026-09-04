@@ -7,6 +7,7 @@ import { useCart } from "@/components/CartProvider";
 import { formatPrice } from "@/lib/format";
 import { availableStock } from "@/lib/stock";
 import { BOX_ITEM_COUNT, BOX_PRICE } from "@/lib/box";
+import { ProductImagePlaceholder } from "@/components/ProductImagePlaceholder";
 
 type CatalogVariant = {
   id: string;
@@ -113,11 +114,13 @@ export function BoxBuilder({ catalog }: { catalog: CatalogProduct[] }) {
                 onChange={(e) => toggleProduct(product, e.target.checked)}
                 aria-label={`Add ${product.name} to your box`}
               />
-              {product.image && (
-                <div className="relative h-14 w-12 shrink-0 overflow-hidden border border-line bg-belt-100">
+              <div className="relative h-14 w-12 shrink-0 overflow-hidden border border-line bg-belt-100">
+                {product.image ? (
                   <Image src={product.image.url} alt={product.image.altText} fill sizes="48px" className="object-cover" unoptimized />
-                </div>
-              )}
+                ) : (
+                  <ProductImagePlaceholder />
+                )}
+              </div>
               <div className="flex-1">
                 <p className="font-body text-sm text-ink">{product.name}</p>
                 {product.variants.length > 1 && isSelected && (

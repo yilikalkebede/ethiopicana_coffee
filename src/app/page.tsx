@@ -4,6 +4,7 @@ import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { NewsletterForm } from "@/components/NewsletterForm";
 import { getPrimaryImage } from "@/lib/productImage";
+import { ProductImagePlaceholder } from "@/components/ProductImagePlaceholder";
 import { getRegions } from "@/lib/regions";
 import { FLAVOR_CATEGORY_KEYWORDS, matchesFlavorCategory } from "@/lib/personalization";
 
@@ -125,11 +126,13 @@ export default async function HomePage() {
           <p className="font-mono text-[11px] uppercase tracking-tag text-belt-100">This month&apos;s specimen</p>
           {monthly ? (
             <>
-              {monthlyImage && (
-                <div className="relative mt-6 aspect-[21/9] w-full overflow-hidden border border-belt-500/40">
+              <div className="relative mt-6 aspect-[21/9] w-full overflow-hidden border border-belt-500/40 bg-belt-100">
+                {monthlyImage ? (
                   <Image src={monthlyImage.url} alt={monthlyImage.altText} fill sizes="100vw" className="object-cover" unoptimized />
-                </div>
-              )}
+                ) : (
+                  <ProductImagePlaceholder />
+                )}
+              </div>
               <h2 className="mt-3 text-4xl">{monthly.product.name}</h2>
               <p className="mt-4 max-w-2xl font-body text-belt-100">{monthly.story}</p>
               <Link href={`/shop/${monthly.product.slug}`} className="btn-primary mt-8 !bg-paper !text-ink hover:!bg-belt-100">
@@ -176,7 +179,7 @@ export default async function HomePage() {
                 return (
                   <div key={region.name} className="border border-line">
                     <div className="relative aspect-square w-full overflow-hidden bg-belt-100">
-                      {region.image && (
+                      {region.image ? (
                         <Image
                           src={region.image.url}
                           alt={region.image.altText}
@@ -185,6 +188,8 @@ export default async function HomePage() {
                           className="object-cover"
                           unoptimized
                         />
+                      ) : (
+                        <ProductImagePlaceholder />
                       )}
                     </div>
                     <div className="p-5">

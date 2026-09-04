@@ -4,6 +4,7 @@ import { formatPrice } from "@/lib/format";
 import { getProductStockStatus } from "@/lib/stock";
 import { StockBadge } from "@/components/StockBadge";
 import { getPrimaryImage, type ProductImageLike } from "@/lib/productImage";
+import { ProductImagePlaceholder } from "@/components/ProductImagePlaceholder";
 import type { Product, ProductVariant } from "@prisma/client";
 
 type CardProduct = Pick<
@@ -25,7 +26,7 @@ export function ProductCard({ product }: { product: CardProduct }) {
   return (
     <Link href={`/shop/${product.slug}`} className="group block">
       <div className="relative aspect-[4/5] w-full overflow-hidden border border-line bg-belt-100 transition-colors group-hover:bg-belt-300/60">
-        {primaryImage && (
+        {primaryImage ? (
           <Image
             src={primaryImage.url}
             alt={primaryImage.altText}
@@ -34,6 +35,8 @@ export function ProductCard({ product }: { product: CardProduct }) {
             className="object-cover"
             unoptimized
           />
+        ) : (
+          <ProductImagePlaceholder />
         )}
       </div>
       <div className="mt-4 flex items-start justify-between gap-2">
