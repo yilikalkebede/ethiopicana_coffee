@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ETHIOPIA_BORDER } from "@/lib/ethiopiaBorder";
+import { AfricaLocatorMap } from "@/components/AfricaLocatorMap";
 
 // Padded bounding box around the real border polygon (see
 // src/lib/ethiopiaBorder.ts) -- the frame the outline and every marker are
@@ -55,7 +56,10 @@ export function EthiopiaCoordinateMap({ regions }: { regions: MapRegion[] }) {
   if (plotted.length === 0) return null;
 
   return (
-    <div className="border border-line bg-belt-50/50 p-6">
+    <div className="relative border border-line bg-belt-50/50 p-6">
+      <div className="absolute right-4 top-4 z-10">
+        <AfricaLocatorMap />
+      </div>
       <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} className="w-full">
         <title>Map of Ethiopia with our coffee regions marked by real coordinates</title>
         <path d={BORDER_PATH} className="fill-belt-100 stroke-belt-500" strokeWidth="1.5" />
