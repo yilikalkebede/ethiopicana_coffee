@@ -109,6 +109,7 @@ async function main() {
     { name: "Blends", slug: "blends" },
     { name: "Decaf", slug: "decaf" },
     { name: "Cold Brew", slug: "cold-brew" },
+    { name: "Sampler Boxes", slug: "sampler-boxes" },
   ];
   const categories = await Promise.all(
     categoryDefs.map((c) => prisma.category.upsert({ where: { slug: c.slug }, update: {}, create: c }))
@@ -335,6 +336,34 @@ async function main() {
       description: "Coarse-cut natural Guji and Sidama, roasted specifically for a 12-hour steep — bold without the bite of a hot dark roast.",
       variants: twoVariants(0, 0), // deliberately out of stock
     },
+    {
+      name: "Ethiopia Discovery Box",
+      slug: "ethiopia-discovery-box",
+      sku: "LAT-BOX-DISC",
+      categorySlug: "sampler-boxes",
+      price: 48,
+      origin: "Ethiopia",
+      region: "Yirgacheffe, Guji & Harrar",
+      latitude: null,
+      longitude: null,
+      roastLevel: null,
+      flavorNotes: ["jasmine", "stone fruit", "blueberry"],
+      brewMethods: ["pour-over", "drip"],
+      processingMethod: "washed & natural",
+      elevationMeters: null,
+      description:
+        "A curated introduction to three distinct Ethiopian regions in one box: washed Yirgacheffe, washed Guji, and natural-process Harrar — one 12oz bag of each, so you can taste how region and process actually change the cup.",
+      variants: [
+        {
+          suffix: "3PK-WB",
+          name: "3 × 12oz / Whole Bean",
+          bagSize: "3 × 12oz",
+          grind: "whole-bean",
+          inventoryQuantity: 30,
+          lowStockThreshold: 8,
+        },
+      ],
+    },
   ];
 
   for (const coffee of coffees) {
@@ -377,7 +406,7 @@ async function main() {
           price: coffee.price,
           // Net coffee weight — real, needed for real Shippo rate/label
           // calls (Phase 6). Every current variant is a 12oz bag.
-          weightGrams: v.bagSize === "12oz" ? 340 : undefined,
+          weightGrams: v.bagSize === "12oz" ? 340 : v.bagSize === "3 × 12oz" ? 1020 : undefined,
           inventoryQuantity: v.inventoryQuantity,
           lowStockThreshold: v.lowStockThreshold,
         },
@@ -418,6 +447,18 @@ async function main() {
         },
       });
     }
+  }
+
+  console.log("Seeding discovery box contents…");
+  const discoveryBox = await prisma.product.findUniqueOrThrow({ where: { slug: "ethiopia-discovery-box" } });
+  const discoveryBoxContents = ["yirgacheffe-ethiopia", "guji-ethiopia", "harrar-ethiopia"];
+  for (const [position, slug] of discoveryBoxContents.entries()) {
+    const includedProduct = await prisma.product.findUniqueOrThrow({ where: { slug } });
+    await prisma.discoveryBoxItem.upsert({
+      where: { productId_includedProductId: { productId: discoveryBox.id, includedProductId: includedProduct.id } },
+      update: { position },
+      create: { productId: discoveryBox.id, includedProductId: includedProduct.id, position },
+    });
   }
 
   console.log("Seeding journal…");

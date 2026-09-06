@@ -7,6 +7,8 @@ import { ProductGallery } from "@/components/ProductGallery";
 import { StockBadge } from "@/components/StockBadge";
 import { getProductStockStatus } from "@/lib/stock";
 import { getPrimaryImage } from "@/lib/productImage";
+import { ProductImagePlaceholder } from "@/components/ProductImagePlaceholder";
+import Image from "next/image";
 
 async function getProduct(slug: string) {
   const product = await prisma.product.findUnique({
@@ -15,6 +17,10 @@ async function getProduct(slug: string) {
       category: true,
       variants: { where: { active: true }, orderBy: [{ bagSize: "asc" }, { grind: "asc" }] },
       images: { orderBy: { position: "asc" } },
+      discoveryBoxItems: {
+        orderBy: { position: "asc" },
+        include: { includedProduct: { include: { images: { orderBy: { position: "asc" }, take: 1 } } } },
+      },
     },
   });
   if (!product || !product.active) return null;
@@ -190,6 +196,49 @@ export default async function ProductPage({ params }: { params: { slug: string }
           )}
         </div>
       </div>
+
+      {product.discoveryBoxItems.length > 0 && (
+        <div className="mt-16 border-t border-line pt-10">
+          <h2 className="font-display text-2xl text-ink">What&apos;s inside</h2>
+          <p className="mt-2 max-w-2xl font-body text-sm text-ink-soft">
+            One 12oz bag of each — real lots from our own catalog, not samples made just for this box.
+          </p>
+          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
+            {product.discoveryBoxItems.map(({ includedProduct }) => {
+              const cardImage = getPrimaryImage(includedProduct.images);
+              return (
+                <Link key={includedProduct.id} href={`/shop/${includedProduct.slug}`} className="group block border border-line">
+                  <div className="relative aspect-square w-full overflow-hidden bg-belt-100">
+                    {cardImage ? (
+                      <Image src={cardImage.url} alt={cardImage.altText} fill sizes="33vw" className="object-cover" unoptimized />
+                    ) : (
+                      <ProductImagePlaceholder />
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <span className="specimen-tag">{includedProduct.region ?? includedProduct.origin}</span>
+                    <h3 className="mt-2 font-display text-base text-ink group-hover:text-belt-700">{includedProduct.name}</h3>
+                    {includedProduct.processingMethod && (
+                      <p className="mt-1 font-body text-xs capitalize text-ink-soft">
+                        {includedProduct.processingMethod} · {includedProduct.roastLevel} roast
+                      </p>
+                    )}
+                    {includedProduct.flavorNotes.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {includedProduct.flavorNotes.map((note) => (
+                          <span key={note} className="tag-pill">
+                            {note}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="mx-auto mt-16 max-w-2xl border-t border-line pt-10">
         <h2 className="font-display text-2xl text-ink">Reviews</h2>

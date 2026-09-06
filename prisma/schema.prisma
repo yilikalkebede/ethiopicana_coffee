@@ -216,10 +216,27 @@ model Product {
   reviews          Review[]
   orderItems       OrderItem[]
   monthlyFeature   MonthlyCoffee[]
+  // Ethiopia Discovery Box: real tasting-card content, not cart/checkout
+  // logic -- a discovery box is a normal, independently-priced/stocked
+  // Product itself; these rows just say which real coffees it contains.
+  discoveryBoxItems DiscoveryBoxItem[] @relation("BoxProduct")
+  includedInBoxes   DiscoveryBoxItem[] @relation("IncludedProduct")
 
   @@index([slug])
   @@index([sku])
   @@index([categoryId])
+}
+
+model DiscoveryBoxItem {
+  id                String   @id @default(cuid())
+  productId         String
+  product           Product  @relation("BoxProduct", fields: [productId], references: [id])
+  includedProductId String
+  includedProduct   Product  @relation("IncludedProduct", fields: [includedProductId], references: [id])
+  position          Int      @default(0)
+
+  @@unique([productId, includedProductId])
+  @@index([productId])
 }
 
 model ProductImage {
