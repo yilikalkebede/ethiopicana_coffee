@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getRegions } from "@/lib/regions";
 import { ProductImagePlaceholder } from "@/components/ProductImagePlaceholder";
+import { EthiopiaCoordinateMap } from "@/components/EthiopiaCoordinateMap";
 
 export const metadata: Metadata = {
   title: "Ethiopia's Coffee Regions",
@@ -23,6 +24,10 @@ export default async function OriginsPage() {
         Here&apos;s where each one comes from.
       </p>
 
+      <div className="mt-12">
+        <EthiopiaCoordinateMap regions={regions} />
+      </div>
+
       <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
         {regions.map((region) => {
           const tagParts: string[] = [];
@@ -38,7 +43,7 @@ export default async function OriginsPage() {
           }
 
           return (
-            <div key={region.name} className="border border-line">
+            <Link key={region.name} href={`/origins/${region.match}`} className="group block border border-line">
               <div className="relative aspect-[4/5] w-full overflow-hidden bg-belt-100">
                 {region.image ? (
                   <Image
@@ -55,16 +60,13 @@ export default async function OriginsPage() {
               </div>
               <div className="p-5">
                 {tagParts.length > 0 && <span className="specimen-tag">{tagParts.join(" · ")}</span>}
-                <h2 className="mt-3 text-xl text-ink">{region.name}</h2>
+                <h2 className="mt-3 text-xl text-ink group-hover:text-belt-700">{region.name}</h2>
                 <p className="mt-2 font-body text-sm text-ink-soft">{region.blurb}</p>
-                <Link
-                  href={`/shop?q=${encodeURIComponent(region.name)}`}
-                  className="mt-4 inline-block font-mono text-[11px] uppercase tracking-tag text-belt-700 hover:text-belt-900"
-                >
+                <span className="mt-4 inline-block font-mono text-[11px] uppercase tracking-tag text-belt-700 group-hover:text-belt-900">
                   {region.count} coffee{region.count === 1 ? "" : "s"} from this region →
-                </Link>
+                </span>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>

@@ -40,3 +40,50 @@ export async function getRegions() {
     };
   }).filter((region) => region.count > 0);
 }
+
+/**
+ * Real per-region detail data for /origins/[slug] -- everything here is
+ * derived from actual product/journal rows, never invented. Returns null
+ * for an unknown slug or a canonical region with zero matching active
+ * products (same "never show a dead page" rule as getRegions()).
+ */
+export async function getRegionDetail(slug: string) {
+  const canonical = CANONICAL_REGIONS.find((r) => r.match === slug);
+  if (!canonical) return null;
+
+  const products = await prisma.product.findMany({
+    where: { active: true, region: { contains: canonical.match, mode: "insensitive" } },
+    include: {
+      variants: { select: { inventoryQuantity: true, reservedQuantity: true, lowStockThreshold: true } },
+      images: { orderBy: { position: "asc" }, take: 1, select: { url: true, altText: true } },
+    },
+    orderBy: { name: "asc" },
+  });
+  if (products.length === 0) return null;
+
+  const withCoords = products.find((p) => p.latitude != null && p.longitude != null);
+  const elevations = products.map((p) => p.elevationMeters).filter((e): e is number => e != null);
+
+  const flavorNotes = Array.from(new Set(products.flatMap((p) => p.flavorNotes))).sort();
+  const processingMethods = Array.from(
+    new Set(products.map((p) => p.processingMethod).filter((m): m is string => !!m))
+  ).sort();
+
+  const relatedPosts = await prisma.journalPost.findMany({
+    where: { region: canonical.name, published: true },
+    orderBy: { publishedAt: "desc" },
+    include: { category: true },
+  });
+
+  return {
+    ...canonical,
+    products,
+    latitude: withCoords?.latitude ?? null,
+    longitude: withCoords?.longitude ?? null,
+    minElevation: elevations.length > 0 ? Math.min(...elevations) : null,
+    maxElevation: elevations.length > 0 ? Math.max(...elevations) : null,
+    flavorNotes,
+    processingMethods,
+    relatedPosts,
+  };
+}

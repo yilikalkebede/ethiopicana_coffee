@@ -38,6 +38,11 @@ test.describe("accessibility (serious/critical WCAG 2 A/AA violations)", () => {
     await scan(page);
   });
 
+  test("origin region detail", async ({ page }) => {
+    await page.goto("/origins/yirgacheffe");
+    await scan(page);
+  });
+
   test("login", async ({ page }) => {
     await page.goto("/login");
     await scan(page);
