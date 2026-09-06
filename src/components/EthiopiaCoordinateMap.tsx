@@ -1,13 +1,32 @@
 import Link from "next/link";
+import { ETHIOPIA_BORDER } from "@/lib/ethiopiaBorder";
 
-// Ethiopia's real approximate coordinate range, used only as an axis scale
-// for plotting real region coordinates -- not a claimed border shape. This
-// is a schematic data plot, not a map illustration, per the brand spec's
-// rule against presenting invented/approximate geography as authentic.
-const LAT_MIN = 3;
-const LAT_MAX = 15;
-const LON_MIN = 33;
-const LON_MAX = 48;
+// Padded bounding box around the real border polygon (see
+// src/lib/ethiopiaBorder.ts) -- the frame the outline and every marker are
+// projected into, so a region's dot always lands inside its own country.
+const LONS = ETHIOPIA_BORDER.map(([lon]) => lon);
+const LATS = ETHIOPIA_BORDER.map(([, lat]) => lat);
+const PAD = 0.6;
+const LON_MIN = Math.min(...LONS) - PAD;
+const LON_MAX = Math.max(...LONS) + PAD;
+const LAT_MIN = Math.min(...LATS) - PAD;
+const LAT_MAX = Math.max(...LATS) + PAD;
+
+const VIEW_W = 400;
+const VIEW_H = 340;
+const MARGIN = 24;
+
+function project([lon, lat]: [number, number]): [number, number] {
+  const x = MARGIN + ((lon - LON_MIN) / (LON_MAX - LON_MIN)) * (VIEW_W - MARGIN * 2);
+  const y = VIEW_H - MARGIN - ((lat - LAT_MIN) / (LAT_MAX - LAT_MIN)) * (VIEW_H - MARGIN * 2);
+  return [x, y];
+}
+
+const BORDER_PATH =
+  ETHIOPIA_BORDER.map((point, i) => {
+    const [x, y] = project(point);
+    return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ") + " Z";
 
 // Several regions sit close together on the real map (Yirgacheffe/Sidama/Guji,
 // Limu/Jimma) -- these per-region label offsets only keep the text legible,
@@ -37,28 +56,12 @@ export function EthiopiaCoordinateMap({ regions }: { regions: MapRegion[] }) {
 
   return (
     <div className="border border-line bg-belt-50/50 p-6">
-      <svg viewBox="0 0 400 320" className="w-full">
-        <title>Coordinate plot of Ethiopicana&apos;s coffee regions by real latitude and longitude — select a region to view its detail page</title>
-        <rect x="40" y="10" width="340" height="270" fill="none" stroke="currentColor" className="text-line" strokeWidth="1" />
-
-        {/* Compass mark */}
-        <g className="text-ink-soft">
-          <line x1="20" y1="40" x2="20" y2="10" stroke="currentColor" strokeWidth="1" />
-          <polygon points="20,4 16,14 24,14" fill="currentColor" />
-          <text x="20" y="52" textAnchor="middle" className="font-mono" fontSize="9" fill="currentColor">N</text>
-        </g>
-
-        {/* Axis labels */}
-        <text x="210" y="298" textAnchor="middle" className="font-mono" fontSize="10" fill="currentColor">
-          {LON_MIN}°E — {LON_MAX}°E
-        </text>
-        <text x="14" y="145" textAnchor="middle" className="font-mono" fontSize="10" fill="currentColor" transform="rotate(-90 14 145)">
-          {LAT_MIN}°N — {LAT_MAX}°N
-        </text>
+      <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} className="w-full">
+        <title>Map of Ethiopia with our coffee regions marked by real coordinates</title>
+        <path d={BORDER_PATH} className="fill-belt-100 stroke-belt-500" strokeWidth="1.5" />
 
         {plotted.map((region) => {
-          const x = 40 + ((region.longitude - LON_MIN) / (LON_MAX - LON_MIN)) * 340;
-          const y = 280 - ((region.latitude - LAT_MIN) / (LAT_MAX - LAT_MIN)) * 270;
+          const [x, y] = project([region.longitude, region.latitude]);
           const offset = LABEL_OFFSET[region.match] ?? { dx: 0, dy: -11 };
           return (
             <g key={region.match}>
@@ -79,7 +82,7 @@ export function EthiopiaCoordinateMap({ regions }: { regions: MapRegion[] }) {
         })}
       </svg>
       <p className="mt-3 font-mono text-[11px] uppercase tracking-tag text-ink-soft">
-        Approximate positions by real coordinates — not to scale
+        Boundary simplified for display · regions plotted by real coordinates
       </p>
     </div>
   );
