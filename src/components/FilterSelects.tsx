@@ -9,7 +9,19 @@ const SORTS = [
   { value: "name-asc", label: "Name: A–Z" },
 ];
 
-export function FilterSelects({ regions, roasts, flavors }: { regions: string[]; roasts: string[]; flavors: string[] }) {
+export function FilterSelects({
+  regions,
+  roasts,
+  processes,
+  flavors,
+  priceBuckets,
+}: {
+  regions: string[];
+  roasts: string[];
+  processes: string[];
+  flavors: string[];
+  priceBuckets: { key: string; label: string }[];
+}) {
   const router = useRouter();
   const pathname = usePathname() ?? "/shop";
   const searchParams = useSearchParams();
@@ -57,6 +69,20 @@ export function FilterSelects({ regions, roasts, flavors }: { regions: string[];
       </select>
 
       <select
+        aria-label="Filter by process"
+        value={searchParams?.get("process") ?? ""}
+        onChange={(e) => updateParam("process", e.target.value)}
+        className="border border-line bg-paper px-3 py-2 font-body text-sm text-ink capitalize"
+      >
+        <option value="">All processes</option>
+        {processes.map((process) => (
+          <option key={process} value={process} className="capitalize">
+            {process}
+          </option>
+        ))}
+      </select>
+
+      <select
         aria-label="Filter by flavor"
         value={searchParams?.get("flavor") ?? ""}
         onChange={(e) => updateParam("flavor", e.target.value)}
@@ -69,6 +95,29 @@ export function FilterSelects({ regions, roasts, flavors }: { regions: string[];
           </option>
         ))}
       </select>
+
+      <select
+        aria-label="Filter by price"
+        value={searchParams?.get("price") ?? ""}
+        onChange={(e) => updateParam("price", e.target.value)}
+        className="border border-line bg-paper px-3 py-2 font-body text-sm text-ink"
+      >
+        <option value="">All prices</option>
+        {priceBuckets.map((bucket) => (
+          <option key={bucket.key} value={bucket.key}>
+            {bucket.label}
+          </option>
+        ))}
+      </select>
+
+      <label className="flex items-center gap-2 font-body text-sm text-ink">
+        <input
+          type="checkbox"
+          checked={searchParams?.get("availability") === "in-stock"}
+          onChange={(e) => updateParam("availability", e.target.checked ? "in-stock" : "")}
+        />
+        In stock only
+      </label>
 
       <select
         aria-label="Sort"

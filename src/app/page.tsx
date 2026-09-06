@@ -68,13 +68,13 @@ export default async function HomePage() {
         <div>
           <span className="specimen-tag">{heroTag}</span>
           <h1 className="mt-6 text-5xl leading-[1.05] text-ink md:text-6xl">
-            100% Ethiopian coffee, tracked to the <em className="italic text-belt-500">exact region</em> it grew.
+            Discover Ethiopia, <em className="italic text-belt-500">one coffee region</em> at a time.
           </h1>
           <p className="mt-6 max-w-md font-body text-base text-ink-soft">
-            We buy every lot directly from washing stations and cooperatives
-            across Ethiopia — Yirgacheffe, Sidama, Guji, Harrar, and more —
-            roast it to order out of our own roastery, and log exactly where
-            each bag came from. No other origin, no blended-anonymous stock.
+            Specialty coffees from Ethiopia, selected for the places, people, and
+            processing that make each cup distinctive. We buy every lot directly
+            from washing stations and cooperatives — Yirgacheffe, Sidama, Guji,
+            Harrar, and more — and roast it to order out of our own roastery.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/subscribe" className="btn-primary">

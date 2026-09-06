@@ -16,13 +16,17 @@ export function FilterPanel({
   categories,
   regions,
   roasts,
+  processes,
   flavors,
+  priceBuckets,
   searchParams,
 }: {
   categories: { name: string; slug: string }[];
   regions: string[];
   roasts: string[];
+  processes: string[];
   flavors: string[];
+  priceBuckets: { key: string; label: string }[];
   searchParams: Record<string, string | string[] | undefined>;
 }) {
   const activeCategory = typeof searchParams.category === "string" ? searchParams.category : undefined;
@@ -51,7 +55,7 @@ export function FilterPanel({
           rendering unless wrapped in Suspense — required by Next.js for
           static generation to succeed. */}
       <Suspense fallback={null}>
-        <FilterSelects regions={regions} roasts={roasts} flavors={flavors} />
+        <FilterSelects regions={regions} roasts={roasts} processes={processes} flavors={flavors} priceBuckets={priceBuckets} />
       </Suspense>
     </div>
   );

@@ -8,6 +8,8 @@ import { StockBadge } from "@/components/StockBadge";
 import { getProductStockStatus } from "@/lib/stock";
 import { getPrimaryImage } from "@/lib/productImage";
 import { ProductImagePlaceholder } from "@/components/ProductImagePlaceholder";
+import { ProductCard } from "@/components/ProductCard";
+import { getSimilarProducts } from "@/lib/similarProducts";
 import Image from "next/image";
 
 async function getProduct(slug: string) {
@@ -53,6 +55,13 @@ export default async function ProductPage({ params }: { params: { slug: string }
   if (!product) notFound();
 
   const { average, count, reviews } = await getApprovedReviews(product.id);
+
+  const similarProducts = await getSimilarProducts({
+    excludeProductIds: [product.id, ...product.discoveryBoxItems.map((i) => i.includedProductId)],
+    regions: [product.region],
+    flavorNotes: product.flavorNotes,
+    limit: 3,
+  });
 
   const tag =
     product.latitude != null && product.longitude != null
@@ -236,6 +245,19 @@ export default async function ProductPage({ params }: { params: { slug: string }
                 </Link>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {similarProducts.length > 0 && (
+        <div className="mt-16 border-t border-line pt-10">
+          <h2 className="font-display text-2xl text-ink">
+            {status === "out-of-stock" ? "This one's sold out — here's what's similar" : "You might also like"}
+          </h2>
+          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
+            {similarProducts.map((similar) => (
+              <ProductCard key={similar.id} product={similar} />
+            ))}
           </div>
         </div>
       )}

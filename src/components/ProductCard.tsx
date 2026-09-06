@@ -7,10 +7,15 @@ import { getPrimaryImage, type ProductImageLike } from "@/lib/productImage";
 import { ProductImagePlaceholder } from "@/components/ProductImagePlaceholder";
 import type { Product, ProductVariant } from "@prisma/client";
 
-type CardProduct = Pick<
-  Product,
-  "slug" | "name" | "price" | "region" | "roastLevel" | "flavorNotes" | "latitude" | "longitude"
+type CardProduct = Omit<
+  Pick<Product, "slug" | "name" | "price" | "region" | "roastLevel" | "flavorNotes" | "latitude" | "longitude">,
+  "price"
 > & {
+  // Widened beyond Product's real Decimal type so API responses that have
+  // already serialized price to a string (e.g. cross-sell JSON) can reuse
+  // this card without a redundant re-parse -- formatPrice() already
+  // accepts all three.
+  price: Product["price"] | number | string;
   variants: Pick<ProductVariant, "inventoryQuantity" | "reservedQuantity" | "lowStockThreshold">[];
   images: ProductImageLike[];
 };
