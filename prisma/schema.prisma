@@ -221,6 +221,7 @@ model Product {
   // Product itself; these rows just say which real coffees it contains.
   discoveryBoxItems DiscoveryBoxItem[] @relation("BoxProduct")
   includedInBoxes   DiscoveryBoxItem[] @relation("IncludedProduct")
+  journalMentions   JournalPostProduct[]
 
   @@index([slug])
   @@index([sku])
@@ -981,11 +982,33 @@ model JournalPost {
   author      User?     @relation(fields: [authorId], references: [id])
   categoryId  String?
   category    JournalCategory? @relation(fields: [categoryId], references: [id])
+  // A single hero image, not a reorderable gallery like ProductImage --
+  // journal doesn't need multi-image/position complexity.
+  heroImageUrl String?
+  // Plain text matching one of CANONICAL_REGIONS (src/lib/regions.ts),
+  // mirroring how Product.region is already free text rather than a
+  // foreign key -- a soft, display-only link, not a real Region table.
+  region      String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  relatedProducts JournalPostProduct[]
+
   @@index([slug])
   @@index([published, publishedAt])
+}
+
+// "Coffees mentioned" -- real, display-only relation, same shape as
+// DiscoveryBoxItem.
+model JournalPostProduct {
+  id           String      @id @default(cuid())
+  journalPostId String
+  journalPost  JournalPost @relation(fields: [journalPostId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product     @relation(fields: [productId], references: [id])
+
+  @@unique([journalPostId, productId])
+  @@index([journalPostId])
 }
 
 // Flat (no parent/child tree, unlike Product's Category) -- journal topics

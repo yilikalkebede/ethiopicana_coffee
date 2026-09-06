@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CANONICAL_REGIONS } from "@/lib/regionNames";
 
 function slugify(value: string): string {
   return value
@@ -19,6 +20,8 @@ export type JournalPostFormValues = {
   body: string;
   published: boolean;
   categoryId: string;
+  region: string;
+  relatedProductIds: string[];
 };
 
 export const EMPTY_JOURNAL_POST_FORM: JournalPostFormValues = {
@@ -28,6 +31,8 @@ export const EMPTY_JOURNAL_POST_FORM: JournalPostFormValues = {
   body: "",
   published: false,
   categoryId: "",
+  region: "",
+  relatedProductIds: [],
 };
 
 const inputClass =
@@ -39,11 +44,13 @@ export function JournalPostForm({
   basePath,
   initial,
   categories,
+  products,
 }: {
   mode: "create" | "edit";
   basePath: "/admin" | "/manager";
   initial?: JournalPostFormValues;
   categories: { id: string; name: string }[];
+  products: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [form, setForm] = useState<JournalPostFormValues>(initial ?? EMPTY_JOURNAL_POST_FORM);
@@ -74,6 +81,8 @@ export function JournalPostForm({
       body: form.body,
       published: form.published,
       categoryId: form.categoryId || null,
+      region: form.region || null,
+      relatedProductIds: form.relatedProductIds,
     };
 
     const url = mode === "create" ? "/api/admin/journal" : `/api/admin/journal/${form.id}`;
@@ -141,6 +150,48 @@ export function JournalPostForm({
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
+      </div>
+
+      <div>
+        <label className={labelClass} htmlFor="jp-region">Region (optional)</label>
+        <select
+          id="jp-region"
+          value={form.region}
+          onChange={(e) => set("region", e.target.value)}
+          className={inputClass}
+        >
+          <option value="">No region</option>
+          {CANONICAL_REGIONS.map((r) => (
+            <option key={r.name} value={r.name}>{r.name}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <p className={labelClass}>Related coffees (optional)</p>
+        <div className="mt-2 max-h-48 space-y-1 overflow-y-auto border border-line p-3">
+          {products.length === 0 ? (
+            <p className="font-body text-sm text-ink-soft">No products available.</p>
+          ) : (
+            products.map((p) => (
+              <label key={p.id} className="flex items-center gap-2 font-body text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={form.relatedProductIds.includes(p.id)}
+                  onChange={(e) =>
+                    set(
+                      "relatedProductIds",
+                      e.target.checked
+                        ? [...form.relatedProductIds, p.id]
+                        : form.relatedProductIds.filter((id) => id !== p.id)
+                    )
+                  }
+                />
+                {p.name}
+              </label>
+            ))
+          )}
+        </div>
       </div>
 
       <div>

@@ -462,23 +462,41 @@ async function main() {
   }
 
   console.log("Seeding journal…");
+  // Names tracked closer to the brand spec's suggested list (slugs kept
+  // stable so /journal?category=... links never break). "Sustainability"
+  // is a deliberate addition with real published content, not renamed to
+  // match a spec category that has none.
   const journalCategoryDefs = [
-    { name: "Origins & Regions", slug: "origins-regions" },
-    { name: "Brewing Guides", slug: "brewing-guides" },
-    { name: "Processing & Craft", slug: "processing-craft" },
+    { name: "Ethiopian Coffee Regions", slug: "origins-regions" },
+    { name: "Brewing", slug: "brewing-guides" },
+    { name: "Processing", slug: "processing-craft" },
     { name: "Sustainability", slug: "sustainability" },
   ];
   const journalCategories = await Promise.all(
-    journalCategoryDefs.map((c) => prisma.journalCategory.upsert({ where: { slug: c.slug }, update: {}, create: c }))
+    journalCategoryDefs.map((c) =>
+      prisma.journalCategory.upsert({ where: { slug: c.slug }, update: { name: c.name }, create: c })
+    )
   );
   const journalCategoryBySlug = Object.fromEntries(journalCategories.map((c) => [c.slug, c]));
 
-  const journalPostDefs = [
+  type JournalPostDef = {
+    slug: string;
+    title: string;
+    excerpt: string;
+    category: string;
+    body: string;
+    region?: string;
+    relatedProductSlugs?: string[];
+  };
+
+  const journalPostDefs: JournalPostDef[] = [
     {
       slug: "what-makes-yirgacheffe-taste-like-yirgacheffe",
       title: "What Makes Yirgacheffe Taste Like Yirgacheffe",
       excerpt: "Elevation, heirloom varieties, and a washing tradition that's been refined for generations.",
       category: "origins-regions",
+      region: "Yirgacheffe",
+      relatedProductSlugs: ["yirgacheffe-ethiopia"],
       body: `Yirgacheffe sits in the Gedeo Zone of southern Ethiopia, most of it above 1,900 meters. That altitude alone does a lot of work: coffee cherries ripen more slowly at elevation, which gives the plant more time to develop sugars and aromatic compounds before harvest.
 
 The region also grows almost entirely heirloom varieties — genetically diverse coffee plants that predate the modern, disease-resistant cultivars grown in most of the world. Nobody bred them for yield or uniformity, which is part of why cup quality can vary lot to lot, but also why the best lots taste unlike anything grown elsewhere.
@@ -492,6 +510,8 @@ None of those three things — elevation, variety, process — would produce tha
       title: "Guji vs. Sidama, Side by Side",
       excerpt: "Two neighboring regions, two very different personalities in the cup.",
       category: "origins-regions",
+      region: "Guji",
+      relatedProductSlugs: ["guji-ethiopia", "sidama-ethiopia"],
       body: `Guji and Sidama sit close enough to each other on a map that it's easy to assume they'd taste similar. In the cup, they usually don't.
 
 Sidama, one of Ethiopia's larger and more established coffee zones, tends to land in a familiar washed-Ethiopian register: bright acidity, a syrupy body, and fruit notes that lean toward citrus and berry rather than tropical. It's a reliable, balanced cup — the kind that made Ethiopian washed coffee famous in the first place.
@@ -574,26 +594,36 @@ There's a practical flavor argument for this too, not just an ecological one: sh
 
 Not every Ethiopian lot is grown this way, and shade-grown isn't a certification with a strict legal definition the way organic is. But when you taste an Ethiopian coffee with real depth and complexity, there's a decent chance it grew up literally under a forest, the way coffee first did.`,
     },
-  ] as const;
+  ];
 
-  await Promise.all(
-    journalPostDefs.map((p) =>
-      prisma.journalPost.upsert({
-        where: { slug: p.slug },
-        update: {},
-        create: {
-          slug: p.slug,
-          title: p.title,
-          excerpt: p.excerpt,
-          body: p.body,
-          published: true,
-          publishedAt: new Date(),
-          authorId: admin.id,
-          categoryId: journalCategoryBySlug[p.category].id,
-        },
-      })
-    )
-  );
+  for (const p of journalPostDefs) {
+    const post = await prisma.journalPost.upsert({
+      where: { slug: p.slug },
+      update: { region: p.region ?? null },
+      create: {
+        slug: p.slug,
+        title: p.title,
+        excerpt: p.excerpt,
+        body: p.body,
+        published: true,
+        publishedAt: new Date(),
+        authorId: admin.id,
+        categoryId: journalCategoryBySlug[p.category].id,
+        region: p.region ?? null,
+      },
+    });
+
+    if (p.relatedProductSlugs && p.relatedProductSlugs.length > 0) {
+      const relatedProducts = await prisma.product.findMany({ where: { slug: { in: p.relatedProductSlugs } } });
+      for (const related of relatedProducts) {
+        await prisma.journalPostProduct.upsert({
+          where: { journalPostId_productId: { journalPostId: post.id, productId: related.id } },
+          update: {},
+          create: { journalPostId: post.id, productId: related.id },
+        });
+      }
+    }
+  }
 
   console.log("Seed complete.");
   console.log("  Admin login:    admin@ethiopicana.example / ChangeMe123!");

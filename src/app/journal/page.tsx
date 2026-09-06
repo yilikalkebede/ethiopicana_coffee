@@ -1,5 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { prisma } from "@/lib/prisma";
+import { ProductImagePlaceholder } from "@/components/ProductImagePlaceholder";
 
 // Only ever shows a category with at least one real published post -- same
 // "never show a dead filter" rule as the homepage/shop flavor filters
@@ -57,15 +59,24 @@ export default async function JournalPage({
       ) : (
         <div className="mt-10 divide-y divide-line border-y border-line">
           {posts.map((post) => (
-            <Link key={post.id} href={`/journal/${post.slug}`} className="block py-6 hover:bg-belt-50/50">
-              <div className="flex flex-wrap items-center gap-3">
-                <p className="font-mono text-[11px] uppercase tracking-tag text-belt-700">
-                  {post.publishedAt?.toLocaleDateString()}
-                </p>
-                {post.category && <span className="tag-pill">{post.category.name}</span>}
+            <Link key={post.id} href={`/journal/${post.slug}`} className="flex gap-5 py-6 hover:bg-belt-50/50">
+              <div className="relative aspect-[4/3] w-32 shrink-0 overflow-hidden border border-line bg-belt-100">
+                {post.heroImageUrl ? (
+                  <Image src={post.heroImageUrl} alt="" fill sizes="128px" className="object-cover" unoptimized />
+                ) : (
+                  <ProductImagePlaceholder />
+                )}
               </div>
-              <h2 className="mt-2 font-display text-xl text-ink">{post.title}</h2>
-              {post.excerpt && <p className="mt-2 font-body text-sm text-ink-soft">{post.excerpt}</p>}
+              <div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="font-mono text-[11px] uppercase tracking-tag text-belt-700">
+                    {post.publishedAt?.toLocaleDateString()}
+                  </p>
+                  {post.category && <span className="tag-pill">{post.category.name}</span>}
+                </div>
+                <h2 className="mt-2 font-display text-xl text-ink">{post.title}</h2>
+                {post.excerpt && <p className="mt-2 font-body text-sm text-ink-soft">{post.excerpt}</p>}
+              </div>
             </Link>
           ))}
         </div>

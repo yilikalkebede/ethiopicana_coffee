@@ -28,14 +28,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid input.", details: parsed.error.flatten() }, { status: 400 });
     }
 
+    // relatedProductIds isn't a JournalPost scalar -- it's handled as its
+    // own step below, not spread into the create call.
+    const { relatedProductIds, ...postData } = parsed.data;
+
     const post = await prisma.$transaction(async (tx) => {
       const created = await tx.journalPost.create({
         data: {
-          ...parsed.data,
+          ...postData,
           authorId: actor.id,
-          publishedAt: parsed.data.published ? new Date() : null,
+          publishedAt: postData.published ? new Date() : null,
         },
       });
+
+      if (relatedProductIds && relatedProductIds.length > 0) {
+        await tx.journalPostProduct.createMany({
+          data: relatedProductIds.map((productId) => ({ journalPostId: created.id, productId })),
+        });
+      }
+
       await tx.auditLog.create({
         data: {
           userId: actor.id,

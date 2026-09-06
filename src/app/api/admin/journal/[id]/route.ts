@@ -37,14 +37,28 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     // (or unpublishing and republishing) shouldn't silently reset it.
     const togglingToPublished = parsed.data.published === true && !existing.published;
 
+    // relatedProductIds isn't a JournalPost scalar -- handled as its own
+    // wholesale-replace step below, not spread into the update call.
+    const { relatedProductIds, ...postData } = parsed.data;
+
     const post = await prisma.$transaction(async (tx) => {
       const updated = await tx.journalPost.update({
         where: { id: params.id },
         data: {
-          ...parsed.data,
+          ...postData,
           publishedAt: togglingToPublished ? new Date() : undefined,
         },
       });
+
+      if (relatedProductIds !== undefined) {
+        await tx.journalPostProduct.deleteMany({ where: { journalPostId: params.id } });
+        if (relatedProductIds.length > 0) {
+          await tx.journalPostProduct.createMany({
+            data: relatedProductIds.map((productId) => ({ journalPostId: params.id, productId })),
+          });
+        }
+      }
+
       await tx.auditLog.create({
         data: {
           userId: actor.id,

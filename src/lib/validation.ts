@@ -144,6 +144,14 @@ export const journalPostSchema = z.object({
   // entirely (which journalPostSchema.partial() treats as "leave
   // untouched" on PATCH, per Prisma's create/update semantics).
   categoryId: z.string().nullable().optional(),
+  // Same nullable-vs-omitted convention as categoryId. heroImageUrl is
+  // normally set by the dedicated upload route (POST .../hero-image), not
+  // this schema -- it's here only so the main PATCH route can clear it.
+  heroImageUrl: z.string().url().nullable().optional(),
+  region: z.string().nullable().optional(),
+  // Always sent as an explicit array (even []) by the form, so "present"
+  // unambiguously means "replace the related coffees with this list."
+  relatedProductIds: z.array(z.string()).optional(),
 });
 
 export const purchaseOrderSchema = z.object({
