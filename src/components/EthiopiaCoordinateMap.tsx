@@ -29,15 +29,12 @@ const BORDER_PATH =
     return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(" ") + " Z";
 
-// Graticule -- faint reference lines so the map still gives a sense of the
-// real latitude/longitude range, not just an unlabeled silhouette.
-function niceTicks(min: number, max: number, step: number): number[] {
-  const ticks: number[] = [];
-  for (let v = Math.ceil(min / step) * step; v <= max; v += step) ticks.push(v);
-  return ticks;
-}
-const LAT_TICKS = niceTicks(LAT_MIN, LAT_MAX, 2);
-const LON_TICKS = niceTicks(LON_MIN, LON_MAX, 3);
+// Graticule -- a few faint reference lines so the map still gives a sense
+// of the real latitude/longitude range, not just an unlabeled silhouette.
+// Kept to 3 per axis (rather than every couple of degrees) so it reads as
+// a light reference instead of a cluttered grid.
+const LAT_TICKS = [4, 9, 14];
+const LON_TICKS = [33, 40, 47];
 
 // Several regions sit close together on the real map (Yirgacheffe/Sidama/Guji,
 // Limu/Jimma) -- these per-region label offsets only keep the text legible,
