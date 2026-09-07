@@ -29,6 +29,16 @@ const BORDER_PATH =
     return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(" ") + " Z";
 
+// Graticule -- faint reference lines so the map still gives a sense of the
+// real latitude/longitude range, not just an unlabeled silhouette.
+function niceTicks(min: number, max: number, step: number): number[] {
+  const ticks: number[] = [];
+  for (let v = Math.ceil(min / step) * step; v <= max; v += step) ticks.push(v);
+  return ticks;
+}
+const LAT_TICKS = niceTicks(LAT_MIN, LAT_MAX, 2);
+const LON_TICKS = niceTicks(LON_MIN, LON_MAX, 3);
+
 // Several regions sit close together on the real map (Yirgacheffe/Sidama/Guji,
 // Limu/Jimma) -- these per-region label offsets only keep the text legible,
 // they never move the plotted marker itself.
@@ -63,6 +73,36 @@ export function EthiopiaCoordinateMap({ regions }: { regions: MapRegion[] }) {
       <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} className="w-full">
         <title>Map of Ethiopia with our coffee regions marked by real coordinates</title>
         <path d={BORDER_PATH} className="fill-belt-100 stroke-belt-500" strokeWidth="1.5" />
+
+        <g className="stroke-belt-300" strokeWidth="0.75" strokeDasharray="2 3" opacity="0.8">
+          {LAT_TICKS.map((lat) => {
+            const y = project([LON_MIN, lat])[1];
+            return <line key={`lat-${lat}`} x1={MARGIN} y1={y} x2={VIEW_W - MARGIN} y2={y} />;
+          })}
+          {LON_TICKS.map((lon) => {
+            const x = project([lon, LAT_MIN])[0];
+            return <line key={`lon-${lon}`} x1={x} y1={MARGIN} x2={x} y2={VIEW_H - MARGIN} />;
+          })}
+        </g>
+
+        <g className="font-mono fill-ink-soft" fontSize="8">
+          {LAT_TICKS.map((lat) => {
+            const y = project([LON_MIN, lat])[1];
+            return (
+              <text key={`lat-label-${lat}`} x={MARGIN + 3} y={y - 3}>
+                {lat}°N
+              </text>
+            );
+          })}
+          {LON_TICKS.map((lon) => {
+            const x = project([lon, LAT_MIN])[0];
+            return (
+              <text key={`lon-label-${lon}`} x={x + 3} y={VIEW_H - MARGIN - 4} textAnchor="start">
+                {lon}°E
+              </text>
+            );
+          })}
+        </g>
 
         {plotted.map((region) => {
           const [x, y] = project([region.longitude, region.latitude]);
