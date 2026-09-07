@@ -97,14 +97,6 @@ export function GiftsMenu() {
           >
             Gift Cards
           </Link>
-          <Link
-            role="menuitem"
-            href="/shop/ethiopia-discovery-box"
-            onClick={() => setOpen(false)}
-            className="block px-4 py-2 font-body text-sm text-ink hover:bg-belt-50"
-          >
-            Ethiopia Discovery Box
-          </Link>
         </div>
       )}
     </div>

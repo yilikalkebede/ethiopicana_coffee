@@ -137,6 +137,14 @@ async function main() {
   // later phase has real states to render, not just zeros.
   const FLAGSHIP_SLUG = "yirgacheffe-ethiopia";
 
+  // Launch catalog intentionally narrowed to 4 single-origin coffees
+  // (Yirgacheffe, Sidama, Guji, Limu) -- the rest exist as real seeded
+  // products (for admin/manager UI, historical orders, etc.) but aren't
+  // active for sale yet. `update: {}` below means this only takes effect
+  // for a genuinely fresh database; toggling on an existing one is a
+  // separate live-data change.
+  const ACTIVE_LAUNCH_SLUGS = new Set(["yirgacheffe-ethiopia", "sidama-ethiopia", "guji-ethiopia", "limu-ethiopia"]);
+
   const coffees = [
     {
       name: "Yirgacheffe, Ethiopia",
@@ -378,7 +386,7 @@ async function main() {
         sku: coffee.sku,
         categoryId: categoryBySlug[coffee.categorySlug].id,
         price: coffee.price,
-        active: true,
+        active: ACTIVE_LAUNCH_SLUGS.has(coffee.slug),
         featured: coffee.slug === FLAGSHIP_SLUG,
         origin: coffee.origin,
         region: coffee.region,
