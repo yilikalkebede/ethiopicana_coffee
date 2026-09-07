@@ -40,7 +40,7 @@ const LON_TICKS = [33, 40, 47];
 // Limu/Jimma) -- these per-region label offsets only keep the text legible,
 // they never move the plotted marker itself.
 const LABEL_OFFSET: Record<string, { dx: number; dy: number }> = {
-  yirgacheffe: { dx: -38, dy: 4 },
+  yirgacheffe: { dx: -52, dy: 4 },
   sidama: { dx: 30, dy: -8 },
   guji: { dx: 10, dy: 24 },
   limu: { dx: -22, dy: -6 },
