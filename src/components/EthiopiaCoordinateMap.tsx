@@ -57,7 +57,7 @@ export function EthiopiaCoordinateMap({ regions }: { regions: MapRegion[] }) {
 
   return (
     <div className="relative border border-line bg-belt-50/50 p-6">
-      <div className="absolute right-4 top-4 z-10">
+      <div className="absolute right-6 top-6 z-10 w-[22%] min-w-20 max-w-44 sm:right-8 sm:top-8">
         <AfricaLocatorMap />
       </div>
       <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} className="w-full">

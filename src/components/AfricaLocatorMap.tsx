@@ -38,13 +38,13 @@ const ETHIOPIA_PATH = ringPath(ETHIOPIA_BORDER);
 
 export function AfricaLocatorMap() {
   return (
-    <div className="w-24 shrink-0 border border-line bg-paper p-2 sm:w-28">
+    <div className="w-full border border-line bg-paper p-2.5">
       <svg viewBox={`0 0 ${VIEW} ${VIEW}`} className="w-full">
         <title>Ethiopia&apos;s location within Africa</title>
         <path d={AFRICA_PATH} className="fill-belt-100 stroke-belt-300" strokeWidth="0.75" />
         <path d={ETHIOPIA_PATH} className="fill-belt-700 stroke-belt-900" strokeWidth="0.75" />
       </svg>
-      <p className="mt-1 text-center font-mono text-[9px] uppercase tracking-tag text-ink-soft">
+      <p className="mt-1.5 text-center font-mono text-[10px] uppercase tracking-tag text-ink-soft">
         Ethiopia in Africa
       </p>
     </div>
