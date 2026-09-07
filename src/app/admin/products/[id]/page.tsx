@@ -5,19 +5,28 @@ import { PortalShell } from "@/components/PortalShell";
 import { ProductForm, type ProductFormValues } from "@/components/ProductForm";
 import { ProductVariantsPanel } from "@/components/ProductVariantsPanel";
 import { ProductImagesPanel } from "@/components/ProductImagesPanel";
+import { BoxContentsPanel } from "@/components/BoxContentsPanel";
+import { SAMPLER_BOX_CATEGORY_SLUG } from "@/lib/box";
 
 export default async function AdminEditProductPage({ params }: { params: { id: string } }) {
   await requirePortalUser("ADMIN", `/admin/products/${params.id}`);
 
-  const [product, categories] = await Promise.all([
+  const [product, categories, otherProducts] = await Promise.all([
     prisma.product.findUnique({
       where: { id: params.id },
       include: {
         variants: { orderBy: [{ bagSize: "asc" }, { grind: "asc" }] },
         images: { orderBy: { position: "asc" } },
+        category: true,
+        discoveryBoxItems: { orderBy: { position: "asc" }, select: { includedProductId: true } },
       },
     }),
     prisma.category.findMany({ orderBy: { name: "asc" } }),
+    prisma.product.findMany({
+      where: { id: { not: params.id } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
   if (!product) notFound();
 
@@ -70,6 +79,15 @@ export default async function AdminEditProductPage({ params }: { params: { id: s
         <div className="mt-10">
           <ProductImagesPanel productId={product.id} images={product.images} />
         </div>
+        {product.category?.slug === SAMPLER_BOX_CATEGORY_SLUG && (
+          <div className="mt-10">
+            <BoxContentsPanel
+              productId={product.id}
+              initialIncludedProductIds={product.discoveryBoxItems.map((i) => i.includedProductId)}
+              products={otherProducts}
+            />
+          </div>
+        )}
       </div>
     </PortalShell>
   );

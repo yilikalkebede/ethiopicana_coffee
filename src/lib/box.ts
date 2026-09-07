@@ -6,6 +6,12 @@ export const BOX_ITEM_COUNT = 4;
 export const BOX_PRICE = 65;
 export const BOX_CATEGORY_SLUG = "single-origin";
 
+// The category a curated sampler product (e.g. Ethiopia Discovery Box)
+// belongs to -- distinct from BOX_CATEGORY_SLUG above, which is what a
+// coffee must be to be *picked for* a customer-built box. Used to decide
+// whether a product's admin edit page shows the "Box contents" panel.
+export const SAMPLER_BOX_CATEGORY_SLUG = "sampler-boxes";
+
 export class BoxInvalidError extends Error {
   constructor(message: string) {
     super(message);

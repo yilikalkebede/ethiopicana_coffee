@@ -154,6 +154,12 @@ export const journalPostSchema = z.object({
   relatedProductIds: z.array(z.string()).optional(),
 });
 
+// Always sent as an explicit array (even []) by BoxContentsPanel -- a
+// wholesale replace, same convention as journalPostSchema.relatedProductIds.
+export const boxContentsSchema = z.object({
+  includedProductIds: z.array(z.string()),
+});
+
 export const purchaseOrderSchema = z.object({
   supplierId: z.string().min(1),
   items: z
